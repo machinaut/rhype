@@ -51,7 +51,6 @@ struct mem_range {
  */
 
 struct partition_info {
-	uval htab_size;
 	uval large_page_size1;
 	uval large_page_size2;
 	uval mbox;		/* x86 mailbox (FIXME! remove) */
