@@ -36,7 +36,9 @@ EXTRA_TARGETS += \
 
 
 ifeq ($(USE_OPENFIRMWARE), yes)
-$(TARGETS): ../lib/$(ISA)/$(CPU_GRP)/libofd.a
+libofd= ../lib/$(ISA)/$(CPU_GRP)/libofd.a
+$(TARGETS): $(libofd)
+INSTALL_IMGS += $(libofd)
 HOST_LDLIBS += -lofd
 
 TARGETS +=	oftest
