@@ -139,6 +139,7 @@ const hcall_vec_t hcall_vec6000[] = {
 	[HEID2X(H_LPAR_INFO)]		= h_lpar_info,
 	[HEID2X(H_MEM_DEFINE)]		= h_mem_define,
 	[HEID2X(H_EIC_CONFIG)]		= h_eic_config,
+	[HEID2X(H_HTAB)]		= h_htab,
 
 #ifdef SPC_HCALLS
 	/* FIXME: need a better way to do this, perhpas another set of
