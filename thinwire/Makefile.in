@@ -23,9 +23,9 @@ VPATH = @srcdir@:@srcdir@/thinwire-src
 
 top_builddir = ..
 
-TARGETS = thinwire2 thinwire console runthinwire simip
+TARGETS = thinwire3 thinwire2 thinwire console runthinwire simip
 
-OBJECTS = thinwire.o console.o simip.o
+OBJECTS = thinwire3.o thinwire.o console.o simip.o
 
 
 thinwire2: thinwire
