@@ -91,15 +91,6 @@ static sval uartNS16750_read(struct io_chan *ops, char *buf, uval len);
 static sval uartNS16750_read_all(struct io_chan *ops, char *buf, uval len);
 static void uartNS16750_noread(struct io_chan *ops);
 
-#if defined(THINWIRE_BAUDRATE) && defined(USE_THINWIRE_IO)
-#define THINWIRE_STRING_SCAN
-#endif
-
-#ifdef THINWIRE_STRING_SCAN
-static sval uartNS16750_write_pre_thinwire(struct io_chan *ops,
-					   const char *buf, uval len);
-#endif
-
 struct uart {
 	struct io_chan ops;
 	uval comBase;
@@ -107,11 +98,7 @@ struct uart {
 
 struct uart uartNS16750 = {
 	.ops = {
-#ifdef THINWIRE_STRING_SCAN
-		.ic_write = uartNS16750_write_pre_thinwire,
-#else
 		.ic_write = uartNS16750_write,
-#endif
 		.ic_write_avail = uartNS16750_write_avail,
 		.ic_read = uartNS16750_read,
 		.ic_read_all = uartNS16750_read_all,
@@ -150,29 +137,16 @@ uartNS16750_debug_status(struct io_chan *ops)
 }
 #endif /* DEBUG */
 
-#ifdef THINWIRE_BAUDRATE
-static uval new_speed = THINWIRE_BAUDRATE;
-#endif /* THINWIRE_BAUDRATE */
 
 struct io_chan *
 uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 {
 	struct uart *uart = &uartNS16750;
 
-/* XXX 'baudrate' is not 9600, it's DIVISOR/9600 (for example) */
-#ifdef THINWIRE_BAUDRATE
-	if (baudrate == new_speed) {
-		new_speed = 0;
-	}
-#endif /* USE_THINWIRE_IO */
-
-	if (baudrate != 0) {
-		baudrate = 115200 / baudrate;
-	}
-
 	/* Serial port address is relative to comBase */
-
-	uart->comBase = io_addr;
+	if (io_addr) {
+		uart->comBase = io_addr;
+	}
 
 	/*
 	 * Wait for Data-Set-Ready on COM1.
@@ -193,6 +167,7 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	 * Set baudrate and other parameters, and raise Data-Terminal-Ready.
 	 */
 	if (baudrate != 0) {
+		baudrate = 115200 / baudrate;
 		comOut(LCR, 0);
 		comOut(IER, 0xff);
 		comOut(IER, 0x0);
@@ -205,15 +180,30 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	}
 	comOut(MCR, MCR_RTS|MCR_DTR);
 
+//#define TEST_SERIAL_PORT
 #ifdef TEST_SERIAL_PORT
-	while (0) {
+	int count = 0;
+	while (1) {
 		char c;
 
-		int x = 1<<22;
+		int x = 1<<24;
 		uval32 lsr;
 		comOut(THR,'a');
 		while (x--) eieio();
 		comIn(LSR, lsr);
+		if ((count % 4) == 0) {
+			comOut(MCR, 0);
+		}
+		if ((count % 4) == 1) {
+			comOut(MCR, MCR_DTR);
+		}
+		if ((count % 4) == 2) {
+			comOut(MCR, MCR_RTS);
+		}
+		if ((count % 4) == 3) {
+			comOut(MCR, MCR_RTS|MCR_DTR);
+		}
+		++count;
 		if ((lsr & LSR_DR) == LSR_DR) {
 			comIn(RBR, c);
 			comOut(THR,c);
@@ -224,9 +214,9 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	}
 #endif
 
-#ifdef DEBUG
-	uartNS16750_debug_status(&uart->ops);
-#endif
+	if (io_addr)
+		uartNS16750_debug_status(&uart->ops);
+
 	return fill_io_chan(&uartNS16750.ops);
 }
 
@@ -237,8 +227,6 @@ uartNS16750_write(struct io_chan *ops, const char *buf, uval len)
 	uval32 lsr;
 	uval l = 0;
 
-	/* turn off incoming */
-	/* comOut(MCR, MCR_DTR); */
 	while (l < len) {
 		char c = *buf++;
 
@@ -250,7 +238,6 @@ uartNS16750_write(struct io_chan *ops, const char *buf, uval len)
 		++l;
 
 	}
-	/* comOut(MCR, 0); */
 	return l;
 }
 
@@ -274,8 +261,6 @@ uartNS16750_read_all(struct io_chan *ops, char *buf, uval len)
 	uval32 lsr;
 	char c;
 	uval l = 0;
-	/* turn on request to send to accept input */
-	/* comOut(MCR,   MCR_RTS); */
 	while (l < len) {
 		while (1) {
 			comIn(LSR, lsr);
@@ -285,7 +270,6 @@ uartNS16750_read_all(struct io_chan *ops, char *buf, uval len)
 		*buf++ = c;
 		++l;
 	}
-	/* comOut(MCR,   0); */
 	return l;
 }
 
@@ -297,9 +281,6 @@ uartNS16750_read(struct io_chan *ops, char *buf, uval len)
 	char c;
 	uval l = 0;
 	uval x;
-
-	/* turn on request to send to accept input */
-	/* comOut(MCR, MCR_RTS);*/
 
 	while (l < len) {
 		x = 1<<16;
@@ -315,7 +296,6 @@ uartNS16750_read(struct io_chan *ops, char *buf, uval len)
 		++l;
 	}
 
-	/* comOut(MCR, 0); */
 	return l;
 }
 
@@ -335,68 +315,3 @@ uartNS16750_noread(struct io_chan *ops)
 	(void)ops;
 }
 
-#ifdef THINWIRE_STRING_SCAN
-/* The io_chan write method we use initially.  It scans the output for
- * the thinwire magic string and when it is detected performs the
- * thinwire speed switch procedure using the hw control lines to
- * synchronize with the thinwire daemon on the other end of the serial
- * line. */
-static sval
-uartNS16750_write_pre_thinwire(struct io_chan *ops, const char *buf, uval len)
-{
-	struct uart *uart = (struct uart *)ops;
-	sval ret;
-
-	if (len != sizeof (thinwire_magic_string) ||
-	    memcmp(buf, thinwire_magic_string,
-		   sizeof (thinwire_magic_string))) {
-		return uartNS16750_write(ops, buf, len);
-	}
-
-	/* Set write handler to the basic write function */
-	ops->ic_write = uartNS16750_write;
-	ret = uartNS16750_write(ops, buf, len);
-
-	if (new_speed == 0)
-		return ret;
-
-	/*
-	 * Wait for Data-Set-Ready to go down.
-	 */
-	while (1) {
-		uval32 msr;
-
-		comIn(MSR, msr);
-		if ((msr & MSR_DSR) == 0) {
-			break;
-		}
-	}
-
-	/* Bring down DTR */
-	comOut(MCR, 0);
-
-	comOut(LCR, LCR_BD);
-	new_speed = 115200 / new_speed;
-
-	comOut(BD_LB, new_speed & 0xff);
-	comOut(BD_UB, new_speed >> 8);
-	comOut(LCR, LCR_8N1);
-
-	/* DTR up */
-	comOut(MCR, MCR_DTR|MCR_RTS);
-
-	/*
-	 * Wait for Data-Set-Ready to go up.
-	 */
-	while (1) {
-		uval32 msr;
-
-		comIn(MSR, msr);
-		if ((msr & MSR_DSR) == MSR_DSR) {
-			break;
-		}
-	}
-
-	return ret;
-}
-#endif /* THINWIRE_STRING_SCAN */
