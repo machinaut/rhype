@@ -313,6 +313,26 @@ parse_args(int argc, char **argv)
 	return 0;
 }
 
+static void
+clean_vdevices()
+{
+	char scratch[128];
+	snprintf(scratch, 128,
+		 "rm -rf " HYPE_ROOT "/%s/of_tree/memory*", oh_pname);
+	system(scratch);
+	snprintf(scratch, 128,
+		 "rm -rf " HYPE_ROOT "/%s/of_tree/vdevice/l-lan*", oh_pname);
+	system(scratch);
+
+	snprintf(scratch, 128,
+		 "rm -rf " HYPE_ROOT "/%s/of_tree/vdevice/vty*", oh_pname);
+	system(scratch);
+
+	snprintf(scratch, 128,
+		 "rm -rf " HYPE_ROOT "/%s/of_tree/vdevice/v-scsi*", oh_pname);
+	system(scratch);
+}
+
 static int
 add_memory(uval lpid, uval base, uval size)
 {
@@ -631,6 +651,8 @@ main(int argc, char **argv)
 
 	uval lpid;
 
+
+
 	hargs.opcode = H_CREATE_PARTITION;
 	hargs.args[0] = rmo_start;
 	hargs.args[1] = rmo_size;
@@ -647,12 +669,8 @@ main(int argc, char **argv)
 	set_file_printf("lpid", "0x%llx", lpid);
 	set_file("state", "CREATED", -1);
 
-	snprintf(scratch, 128,
-		 "rm -rf " HYPE_ROOT "/%s/of_tree/memory*", oh_pname);
-	system(scratch);
-	snprintf(scratch, 128,
-		 "rm -rf " HYPE_ROOT "/%s/of_tree/vdevice/l-lan*", oh_pname);
-	system(scratch);
+	clean_vdevices();
+
 
 	of_add_memory(0, rmo_size);
 	total += rmo_size;
