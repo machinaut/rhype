@@ -153,7 +153,7 @@ while getopts "nihsxrd:X:m:p:b:u:T:" Option; do
 done
 
 thisdir=$(dirname $0)
-if [ -x ${thisdir}/thinwire2 ]; then
+if [ -x ${thisdir}/thinwire3 ]; then
   execdir=${thisdir}
 else
   ## Thinwire executable is not in this directory, it must be in path then
@@ -167,7 +167,7 @@ else
   fi
 fi
 
-thinwire=${execdir}/thinwire2
+thinwire=${execdir}/thinwire3
 console=${execdir}/console
 simip=${execdir}/simip
 
