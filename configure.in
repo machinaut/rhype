@@ -468,10 +468,10 @@ AC_MSG_CHECKING(whether to use external libbz2)
 AC_ARG_WITH(libbz2-srcdir,
   [  --with-libbz2-srcdir	libbz2 source to enable compressed images.],
   [LIBBZ2_SRCDIR="$withval"],
-  [LIBBZ2_SRCDIR="no"]
+  [LIBBZ2_SRCDIR="none"]
 )
 
-if test "x$LIBBZ2_SRCDIR" = "xno"; then
+if test "x$LIBBZ2_SRCDIR" = "xnone"; then
   AC_MSG_RESULT(none)
 else
   AC_MSG_RESULT($LIBBZ2_SRCDIR)

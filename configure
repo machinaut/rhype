@@ -1902,12 +1902,12 @@ if test "${with_libbz2_srcdir+set}" = set; then
   withval="$with_libbz2_srcdir"
   LIBBZ2_SRCDIR="$withval"
 else
-  LIBBZ2_SRCDIR="no"
+  LIBBZ2_SRCDIR="none"
 
 fi
 
 
-if test "x$LIBBZ2_SRCDIR" = "xno"; then
+if test "x$LIBBZ2_SRCDIR" = "xnone"; then
   echo "$ac_t""none" 1>&6
 else
   echo "$ac_t""$LIBBZ2_SRCDIR" 1>&6
