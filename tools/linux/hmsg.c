@@ -24,7 +24,6 @@
 #include <hype.h>
 #include <hype_util.h>
 
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -48,7 +47,7 @@ enum {
 	IPC_RESOURCES = 0x4,	/* resources have been given */
 };
 
-#define MAX_NUM_AIPC	16 /* Number of aipc bufs per partition */
+#define MAX_NUM_AIPC	16	/* Number of aipc bufs per partition */
 
 #define AIPC_LOCAL	1
 
@@ -83,7 +82,7 @@ struct msg_queue {
 };
 
 static void
-msg_sig_fn(int sig, siginfo_t *si, void *ptr)
+msg_sig_fn(int sig, siginfo_t * si, void *ptr)
 {
 	(void)si;
 	printf("Received signal: %d %p\n", sig, ptr);
@@ -103,10 +102,9 @@ main(int argc, char **argv)
 	int fd = hcall_init();
 
 	uval laddr = mem_hold(4096);
-	char* ptr = mmap(NULL, 4096,
-			 PROT_READ|PROT_WRITE, MAP_SHARED,
+	char *ptr = mmap(NULL, 4096,
+			 PROT_READ | PROT_WRITE, MAP_SHARED,
 			 fd, laddr);
-
 
 	args.opcode = H_CREATE_MSGQ;
 	args.args[0] = laddr;
@@ -116,8 +114,9 @@ main(int argc, char **argv)
 	hcall(&args);
 
 	uval xirr = args.args[0];
-	printf(UVAL_CHOOSE("hcall: %lx (%lx) %lx %lx\n",
-			   "hcall: %llx (%llx) %llx %llx\n"),
+
+	printf(UVAL_CHOOSE("hcall: %x (%lx) %x %x\n",
+			   "hcall: %lx (%lx) %lx %lx\n"),
 	       args.retval, xirr, args.args[1], args.args[2]);
 
 	sigfillset(&msg_sig.sa_mask);
@@ -127,39 +126,42 @@ main(int argc, char **argv)
 	ora.oh_signal = SIGRTMIN;
 	ioctl(fd, OH_IRQ_REFLECT, &ora);
 
-	struct msg_queue* mq = (struct msg_queue*)ptr;
+	struct msg_queue *mq = (struct msg_queue *)ptr;
 
 	printf(UVAL_CHOOSE("msgq: %lx %lx %lx\n",
-			    "msgq: %llx %llx %llx\n"),
+			   "msgq: %lx %lx %lx\n"),
 	       mq->bufSize, mq->head, mq->tail);
 
 	uval lpid;
+
 	args.opcode = H_GET_LPID;
 	hcall(&args);
 	lpid = args.args[0];
-	printf(UVAL_CHOOSE("self lpid: %lx\n", "self lpid: %llx\n"),  lpid);
-
+	printf(UVAL_CHOOSE("self lpid: %lx\n", "self lpid: %lx\n"), lpid);
 
 	while (1) {
 		sigset_t set;
+
 		sigemptyset(&set);
 		sigaddset(&set, SIGRTMIN);
 
 		siginfo_t info;
 		int ret = sigwaitinfo(&set, &info);
+
 		printf("sigwaitinfo: %d\n", ret);
 		printf(UVAL_CHOOSE("msgq: %lx %lx %lx\n",
-				   "msgq: %llx %llx %llx\n"),
+				   "msgq: %lx %lx %lx\n"),
 		       mq->bufSize, mq->head, mq->tail);
 
 		int tail = mq->tail % mq->bufSize;
 		struct async_msg_s *msg = &mq->buffer[tail];
-		printf(UVAL_CHOOSE("msg from: %lx\n", "msg from: %llx\n"),
-				   msg->am_source);
+
+		printf(UVAL_CHOOSE("msg from: %lx\n", "msg from: %lx\n"),
+		       msg->am_source);
 		printf(UVAL_CHOOSE("msg raw data: %lx %lx %lx %lx\n",
-				   "msg raw data: %llx %llx %llx %llx\n"),
-		       msg->am_data.amu_data[0],msg->am_data.amu_data[1],
-		       msg->am_data.amu_data[2],msg->am_data.amu_data[3]);
+				   "msg raw data: %lx %lx %lx %lx\n"),
+		       msg->am_data.amu_data[0], msg->am_data.amu_data[1],
+		       msg->am_data.amu_data[2], msg->am_data.amu_data[3]);
 
 		++mq->tail;
 	}

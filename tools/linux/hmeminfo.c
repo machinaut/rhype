@@ -22,7 +22,6 @@
  * Probe the partition's logical address space.
  */
 
-
 #include <hype.h>
 #include <hype_util.h>
 
@@ -40,7 +39,6 @@
 #define DEBUG(a...)
 #endif
 
-
 oh_hcall_args hargs;
 
 int
@@ -50,6 +48,7 @@ main(int argc, char **argv)
 	(void)argv;
 
 	uval start = 0;
+
 	hcall_init();
 
 	hargs.opcode = H_LPAR_INFO;
@@ -60,20 +59,20 @@ main(int argc, char **argv)
 		hcall(&hargs);
 
 		if (0 > (sval)hargs.retval) {
-			printf("Making hcall: %lx\n", hargs.retval);
+			printf("Making hcall: " UVAL_CHOOSE("%x", "%lx") "\n",
+			       hargs.retval);
 			exit(1);
 		}
 
-
 		if (hargs.args[0] != ~((uval)0)) {
 
-			printf(UVAL_CHOOSE("0x%08lx[0x%08lx]\n",
-					   "0x%08llx[0x%08llx]\n"),
+			printf(UVAL_CHOOSE("0x%08x[0x%08x]\n",
+					   "0x%08lx[0x%08lx]\n"),
 			       hargs.args[0], hargs.args[1]);
 		}
 
 		start = hargs.args[0] + hargs.args[1] + 1;
-	} while (hargs.args[0]!= ~((uval)0));
+	} while (hargs.args[0] != ~((uval)0));
 
 	return 0;
 }

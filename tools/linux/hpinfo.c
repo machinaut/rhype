@@ -23,7 +23,6 @@
  * us with a new copy.
  */
 
-
 #include <hype.h>
 #include <hype_util.h>
 
@@ -43,7 +42,6 @@
 #define DEBUG(a...)
 #endif
 
-
 oh_hcall_args hargs;
 oh_mem_hold_args hold_args;
 
@@ -61,12 +59,12 @@ main(int argc, char **argv)
 
 	if (hold_args.laddr == 0) {
 		ioctl(hfd, OH_MEM_HOLD, &hold_args);
-		printf("Holding " UVAL_CHOOSE("%lx %lx\n","%llx %llx\n"),
+		printf("Holding " UVAL_CHOOSE("%x %x\n", "%lx %lx\n"),
 		       hold_args.laddr, hold_args.size);
 	}
 
 	char *ptr = mmap(NULL, hold_args.size,
-			 PROT_READ|PROT_WRITE, MAP_SHARED,
+			 PROT_READ | PROT_WRITE, MAP_SHARED,
 			 hfd, hold_args.laddr);
 
 	memset(ptr, 0xff, 4096);
@@ -76,11 +74,15 @@ main(int argc, char **argv)
 
 	hcall(&hargs);
 
-	oh_partition_info_t *pinfo = (typeof(pinfo))ptr;
+	oh_partition_info_t *pinfo = (typeof(pinfo)) ptr;
 
-	printf("pinfo.htab_size:	%llx\n", pinfo->htab_size);
-	printf("pinfo.chunk_size:	%llx\n", pinfo->chunk_size);
-	printf("pinfo.large_page_size1: %llx\n", pinfo->large_page_size1);
-	printf("pinfo.large_page_size2: %llx\n", pinfo->large_page_size2);
+	printf("pinfo.htab_size:	" UVAL_CHOOSE("%x", "%llx\n"),
+	       pinfo->htab_size);
+	printf("pinfo.chunk_size:	" UVAL_CHOOSE("%x", "%llx\n"),
+	       pinfo->chunk_size);
+	printf("pinfo.large_page_size1: " UVAL_CHOOSE("%x", "%llx\n"),
+	       pinfo->large_page_size1);
+	printf("pinfo.large_page_size2: " UVAL_CHOOSE("%x", "%llx\n"),
+	       pinfo->large_page_size2);
 	return 0;
 }
