@@ -146,10 +146,10 @@ get_file(const char* name, char* buf, int len)
 }
 
 int
-get_file_numeric(const char* name, uval64 *val)
+get_file_numeric(const char* name, uval *val)
 {
 	char buf[65];
-	int ret = get_file(name, buf, 64);
+	int ret = get_file(name, buf, sizeof(buf)-1);
 	if (ret <= 0) return -1;
 
 	buf[ret] = 0;

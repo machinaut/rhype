@@ -49,7 +49,7 @@ extern int parse_laddr(const char* arg, uval64 *base, uval64 *size);
 extern uval mem_hold(uval size);
 
 extern int get_file(const char* name, char* buf, int len);
-extern int get_file_numeric(const char* name, uval64 *val);
+extern int get_file_numeric(const char* name, uval *val);
 extern int set_file(const char* name, const char* buf, int len);
 extern int set_file_printf(const char* name, const char* fmt, ...);
 extern int of_make_node(const char* name);
