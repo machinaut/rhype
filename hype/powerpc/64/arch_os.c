@@ -92,7 +92,6 @@ arch_os_init(struct os *newOS, uval pinfo_addr)
 	}
 
 	pinfo->lpid = newOS->po_lpid;
-	pinfo->htab_size = LOG_HTAB_BYTES;
 
 	/* 0b0010 = 16M & 64K */
 	newOS->large_page_selection =
@@ -118,13 +117,6 @@ arch_os_init(struct os *newOS, uval pinfo_addr)
 		get_large_page_shift(pinfo->large_page_size1);
 	newOS->large_page_shift[1] =
 		get_large_page_shift(pinfo->large_page_size2);
-
-#ifdef SWTLB
-	if (!newOS->cached_partition_info.sfw_tlb)
-#endif
-	{
-		htab_alloc(newOS);
-	}
 
 	lpidtag_acquire(newOS);
 	vtty_init(newOS);
