@@ -33,9 +33,9 @@ vtty_init(struct os *os)
 {
 	int i;
 
-	for (i = 0; i < CHANNEL_PER_OS; ++i) {
+	for (i = 0; i < CHANNELS_PER_OS; ++i) {
 #ifdef USE_THINWIRE_IO
-		uval c = i + CHANNEL_PER_OS * (1 + os->po_lpid_tag);
+		uval c = i + CHANNELS_PER_OS * (1 + os->po_lpid_tag);
 
 		os->po_chan[i] = getThinWireChannel(c);
 #else
@@ -49,7 +49,7 @@ vtty_init(struct os *os)
 sval
 vtty_term_init(struct os *os, uval idx, struct io_chan *chan)
 {
-	assert(idx < CHANNEL_PER_OS, "channel index exceed os limit");
+	assert(idx < CHANNELS_PER_OS, "channel index exceed os limit");
 	assert(os->po_chan[idx] == NULL, "channel already initialized");
 
 	os->po_chan[idx] = chan;
@@ -64,7 +64,7 @@ vtty_put_term_char16(struct cpu_thread *thread, uval channel,
 	sval val;
 	struct io_chan *c;
 
-	assert(channel < CHANNEL_PER_OS, "channel index exceed os limit");
+	assert(channel < CHANNELS_PER_OS, "channel index exceed os limit");
 
 	c = os->po_chan[channel];
 	if (c == NULL) {
@@ -100,7 +100,7 @@ vtty_get_term_char16(struct cpu_thread *thread, uval channel, char *data)
 #ifdef USE_THINWIRE_IO
 	struct os *os = thread->cpu->os;
 
-	assert(channel < CHANNEL_PER_OS, "channel index exceed os limit");
+	assert(channel < CHANNELS_PER_OS, "channel index exceed os limit");
 
 	if (!os->po_chan[channel]) {
 		return H_Closed;
