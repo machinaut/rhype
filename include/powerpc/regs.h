@@ -17,7 +17,7 @@
  *
  * $Id$
  */
-#ifndef _POWERPC_REFS_H
+#ifndef _POWERPC_REGS_H
 #define _POWERPC_REGS_H
 
 #define MIN_FRAME_SZ	112	/* Size of PPC64 leaf-function frame. */
