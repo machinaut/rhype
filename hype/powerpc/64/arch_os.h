@@ -143,9 +143,6 @@ hv_map_LA(struct os *os, uval laddr, uval size)
 	return logical_to_physical_address(os, laddr, size);
 }
 
-extern void htab_alloc(struct os *os);
-extern void htab_free(struct os *os);
-
 extern void switch_large_page_support(struct cpu_thread *cur,
 				      struct cpu_thread *next);
 extern void restore_large_page_selection(struct cpu_thread *);
