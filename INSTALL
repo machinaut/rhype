@@ -47,9 +47,9 @@ As usual, the entire set of configure options can be listed by running:
 What follows is a brief discussion of some of the more interesting
 configure options:
 
-These are, perhaps, the most confusing option.  In order to reduce the
+These are, perhaps, the most confusing options.  In order to reduce the
 size of code that runs in Hypervisor mode we run a "Controlling OS" or
-"controller", which is an OS that teh Hypervisor trusts.  This OS is the
+"controller", which is an OS that the Hypervisor trusts.  This OS is the
 only image the Hypervisor is capable of starting all by itself.
 
   --with-default-lpar-args=<string> 
