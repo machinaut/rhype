@@ -666,6 +666,7 @@ Makefile
 Makefile.conf
 exttools/Makefile
 tools/Makefile
+tools/linux/Makefile
 hype/Makefile
 test/Makefile
 plugins/Makefile
