@@ -502,19 +502,19 @@ struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
 #define __STR(x) #x
 #define STRINGIFY(x) __STR(x)
 static void __gdbstub
-activateThinWire()
+activateThinWire(void)
 {
-
-	char buf[32];
-	int j = 0;
-	int i = 0;
 	hprintf("activating thinwire\n");
 
 	resetThinwire();
 	thinwire_activated = 1;
 
 #ifdef THINWIRE_BAUDRATE
+	char buf[32];
+	int j = 0;
+	int i = 0;
 	const char *speed = STRINGIFY(THINWIRE_BAUDRATE);
+
 	if (speed == NULL) {
 		return;
 	}
