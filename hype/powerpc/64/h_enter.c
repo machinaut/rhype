@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -139,7 +139,7 @@ h_enter(struct cpu_thread *thread, uval flags, uval ptex, uval vsidWord,
 
 	if (check_index(thread->cpu->os, ptex)) {
 #ifdef DEBUG
-		hprintf("%s: bad index\n", __func__);
+		hprintf("%s: bad index (0x%lx)\n", __func__, thread->cpu->os->htab.num_ptes);
 #endif
 		ret = H_Parameter;
 		goto done;
@@ -223,7 +223,7 @@ h_enter(struct cpu_thread *thread, uval flags, uval ptex, uval vsidWord,
 
 	/* If the PTEG is full then no additional values are returned. */
 	ret = H_PTEG_Full;	/* no invalid PTEs in specified PTEG! */
-
+	goto done;
 /* *INDENT-OFF* */
 done2:
 /* *INDENT-ON* */
@@ -231,6 +231,6 @@ done2:
 /* *INDENT-OFF* */
 done:
 /* *INDENT-ON* */
-	hprintf("h_enter error\n");
+	hprintf("h_enter error: %ld\n",ret);
 	goto done2;
 }
