@@ -40,7 +40,6 @@
 #define DEBUG(a...)
 #endif
 
-
 oh_hcall_args hargs;
 
 int
@@ -48,8 +47,9 @@ main(int argc, char **argv)
 {
 
 	int x = 1;
+
 	if (argc < 2) {
-		fprintf(stderr,"No opcode specified");
+		fprintf(stderr, "No opcode specified");
 		return -1;
 	}
 
@@ -59,6 +59,7 @@ main(int argc, char **argv)
 
 	char *q = strchr(argv[x], ':');
 	int num_out = OH_HCALL_NUM_ARGS;
+
 	if (q) {
 		++q;
 		num_out = strtoull(q, NULL, 0);
@@ -71,15 +72,16 @@ main(int argc, char **argv)
 		DEBUG(stderr, "%llx ", hargs.args[x - 2]);
 		++x;
 	}
-	DEBUG(stderr,")\n");
+	DEBUG(stderr, ")\n");
 
 	int ret = hcall(&hargs);
+
 	DEBUG(stderr, "Returned: %d %d\n", ret, errno);
 
 	x = 0;
-	printf("0x%016lx ", hargs.retval);
+	printf(UVAL_CHOOSE("0x%08lx", "0x%016lx") " ", hargs.retval);
 	while (x < num_out) {
-		printf("0x%016lx ", hargs.args[x]);
+		printf(UVAL_CHOOSE("0x%08lx", "0x%016lx") " ", hargs.args[x]);
 		++x;
 	}
 	printf("\n");

@@ -113,7 +113,6 @@ HOST_LDFLAGS:=$(filter-out -nostdlib, $(HOST_LDFLAGS)) -static
 # execvp is borken
 CC_WARN:=$(filter-out -Wcast-qual, $(CC_WARN)) -Wno-cast-qual
 
-
 ofdfs: $(top_builddir)/lib/$(ISA)/$(CPU_GRP)/libofd.a
 ofdfs: ofdfs.o
 ofdfs: HOST_LDFLAGS+=-lofd
