@@ -62,6 +62,8 @@ restart_partition(struct partition_status* ps, struct load_file_entry* lf,
 	uval entry;
 	uval lofd = 0;
 
+	ps->log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
+
 #ifdef USE_OPENFIRMWARE
 	lofd = ofd_lpar_create(ps, lofd, ofd);
 	assert(lofd > 0, "fail to create lpar dev devtree\n");
