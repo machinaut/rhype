@@ -23,7 +23,7 @@
 #define MAX_CRQ_SLOTS 64
 static struct crq_maintenance cm[MAX_CRQ_SLOTS];
 
-static inline sval
+static sval
 crq_transfer(struct crq_maintenance *cm, uval32 liobn, uval32 lpid, uval role)
 {
 	sval rc;
@@ -40,23 +40,6 @@ crq_transfer(struct crq_maintenance *cm, uval32 liobn, uval32 lpid, uval role)
 		} else {
 			cm->cm_owner_client = 0;
 		}
-	}
-	return rc;
-}
-
-static inline sval
-crq_claim(struct crq_maintenance *cm, uval lpid)
-{
-	sval rc;
-	uval rets[1];
-
-	rc = hcall_grant_logical(rets, INTR_SRC, cm->cm_liobn_server,
-				 0, 0, lpid);
-	assert(rc == H_Success, "grant server to self failed\n");
-	if (rc == H_Success) {
-		rc = hcall_grant_logical(rets, INTR_SRC, cm->cm_liobn_client,
-					 0, 0, lpid);
-		assert(rc == H_Success, "grant client to self failed\n");
 	}
 	return rc;
 }
@@ -136,8 +119,6 @@ crq_create(uval lpid, uval role, uval dma_sz)
 						 * here */
 						rc = crq_transfer(res, liobn,
 								  lpid, role);
-					} else {
-						rc = crq_claim(res, lpid);
 					}
 					if (H_Success != rc) {
 						res = NULL;
