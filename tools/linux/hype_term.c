@@ -216,7 +216,6 @@ vterm_io(int port, uval64 vterm)
 	sigaddset(&set, match_sig);
 	sigaddset(&set, io_sig);
 
-	fprintf(stderr, "Using signals %d %d\n", match_sig, io_sig);
 	int sock = 0;
 	struct hvpacket *hp = NULL;
 
@@ -288,7 +287,8 @@ vterm_io(int port, uval64 vterm)
 		struct timespec t = { 1, 0 };
 		int sig = sigtimedwait(&set, NULL, &t);
 
-		if (sig == io_sig) {
+		ret = 1;
+		while (sig == io_sig && ret > 0) {
 			char buf[16];
 
 			ret = read(in_fd, buf, 16);
@@ -314,7 +314,7 @@ vterm_io(int port, uval64 vterm)
 static void
 usage()
 {
-	printf("oh_term [-n|--name <lpar>] "
+	printf("hype_term [-n|--name <lpar>] "
 	       "[-v|--verbose] [-p|--port <port>]\n");
 }
 
