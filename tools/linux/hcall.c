@@ -79,9 +79,9 @@ main(int argc, char **argv)
 	DEBUG(stderr, "Returned: %d %d\n", ret, errno);
 
 	x = 0;
-	printf(UVAL_CHOOSE("0x%08lx", "0x%016lx") " ", hargs.retval);
+	printf(UVAL_CHOOSE("0x%08x", "0x%016lx") " ", hargs.retval);
 	while (x < num_out) {
-		printf(UVAL_CHOOSE("0x%08lx", "0x%016lx") " ", hargs.args[x]);
+		printf(UVAL_CHOOSE("0x%08x", "0x%016lx") " ", hargs.args[x]);
 		++x;
 	}
 	printf("\n");
