@@ -14,9 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- $Id$
  *
- *
+ * $Id$
+ */
+/*
  * XXX references to 'bolted' should go away. This 'bolted' bit is just a
  * software-use PTE bit which Linux uses to always keep the PTE in the HTAB.
  * The bit should not be hardcoded (other OS's may use a different bit to mean
