@@ -24,7 +24,8 @@
 #include <limits.h>
 
 #if 0
-extern int execvp( const char *file, const char *const argv[]);
+extern int execvp(const char *file, const char *const argv[]);
+
 #define execvp glibc_execvp
 #undef execvp
 #endif
@@ -45,9 +46,8 @@ extern int execvp( const char *file, const char *const argv[]);
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
-
 int verbose = 0;
+
 #define msg(fmt...) if (verbose) printf(fmt);
 
 int hcall_fd;
@@ -63,7 +63,7 @@ struct laddr_range {
 	uval64 lr_size;
 };
 
-struct laddr_range lranges[16] = { {0,0}, };
+struct laddr_range lranges[16] = { {0, 0}, };
 int num_ranges = 0;
 
 static void
@@ -86,57 +86,62 @@ usage()
 	       "\t-h		: Print this message\n");
 }
 
-
 static void
-bailout(const char* msg, ...)
+bailout(const char *msg, ...)
 {
 	/* Eventually aborting will involve more than print and exit */
 	va_list ap;
+
 	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
 	va_end(ap);
 	exit(0);
 }
 
-
 static int
-laddr_load(char* file, uval64 laddr)
+laddr_load(char *file, uval64 laddr)
 {
 	uval64 chunk = ALIGN_DOWN(laddr, CHUNK_SIZE);
-	uval64 offset= laddr - chunk;
+	uval64 offset = laddr - chunk;
 	char *ptr = mmap(NULL, CHUNK_SIZE,
-			 PROT_READ|PROT_WRITE, MAP_SHARED,
+			 PROT_READ | PROT_WRITE, MAP_SHARED,
 			 hcall_fd, chunk);
+
 	ASSERT(ptr != MAP_FAILED, "mmap failure on /dev/hcall: %s\n",
 	       strerror(errno));
 
 	int fd = open(file, O_RDONLY);
+
 	ASSERT(fd >= 0, "Can't open: %s\n", file);
 	int ret = 1;
 	int size = 0;
+
 	do {
 		ret = read(fd, ptr + offset, CHUNK_SIZE - offset);
 		offset += ret;
-		if (ret > 0) size += ret;
+		if (ret > 0)
+			size += ret;
 
 	} while (ret > 0);
 	msg("Loaded to 0x%llx[0x%x] %s\n", laddr, size, file);
 	return size;
 }
 
-
-
 static int
-run_command(const char* const argv[])
+run_command(const char *const argv[])
 {
 	pid_t pid = fork();
+
 	if (pid == 0) {
-		int ret = execvp(argv[0], (char* const*)argv);
-		printf("exec failure: %d %d %s\n",ret, errno, strerror(errno));
+		int ret = execvp(argv[0], (char *const *)argv);
+
+		printf("exec failure: %d %d %s\n", ret, errno,
+		       strerror(errno));
 		exit(-1);
 	}
 	int status;
 	pid_t x = waitpid(pid, &status, 0);
+
 	if (x != pid) {
 		printf("pid mismatch: %d %d\n", x, pid);
 		exit(-1);
@@ -149,6 +154,7 @@ of_add_memory(uval64 laddr, uval64 size)
 {
 	char name[64];
 	int ret;
+
 	snprintf(name, 64, "/memory@0x%llx", laddr);
 
 	ret = of_make_node(name);
@@ -157,11 +163,12 @@ of_add_memory(uval64 laddr, uval64 size)
 	of_set_prop(name, "device_type", "memory", -1);
 
 	uval64 x = 2;
-	of_set_prop(name, "#address-cells", &x, sizeof(x));
-	of_set_prop(name, "#size-cells", &x, sizeof(x));
+
+	of_set_prop(name, "#address-cells", &x, sizeof (x));
+	of_set_prop(name, "#size-cells", &x, sizeof (x));
 
 	uval64 reg[2] = { laddr, size };
-	of_set_prop(name, "reg", &reg, sizeof(reg));
+	of_set_prop(name, "reg", &reg, sizeof (reg));
 	return 0;
 }
 
@@ -173,12 +180,11 @@ load_of(uval64 rmo_start, uval64 rmo_size)
 	uval64 prop[2];
 	int ret;
 
-retry:
+      retry:
 	snprintf(mem_node, 64, "/memory@0x%x", 0);
 	prop[0] = 0;
 	prop[1] = stub_addr;
-	of_set_prop(mem_node, "available", prop, sizeof(prop));
-
+	of_set_prop(mem_node, "available", prop, sizeof (prop));
 
 	char oftree[512];
 	char ofstub[512];
@@ -188,21 +194,24 @@ retry:
 	snprintf(ofstub, 512, HYPE_ROOT "/%s/of_image", oh_pname);
 	snprintf(ofdimg, 512, HYPE_ROOT "/%s/of_tree.ofd", oh_pname);
 
-	const char* const args[] = { "ofdfs", "pack", oftree, ofdimg, NULL };
+	const char *const args[] = { "ofdfs", "pack", oftree, ofdimg, NULL };
 	run_command(args);
 
 	uval32 stub_size;
 	struct stat buf;
+
 	ret = stat(ofstub, &buf);
 	ASSERT(ret == 0, "Stat failure %s\n", ofstub);
 	stub_size = buf.st_size + 4 * PGSIZE;
 
 	uval32 data_size;
+
 	ret = stat(ofdimg, &buf);
 	ASSERT(ret == 0, "Stat failure %s\n", ofdimg);
 	data_size = buf.st_size;
 
 	uval32 bottom = ALIGN_DOWN(rmo_size - data_size - stub_size, 1 << 20);
+
 	if (stub_addr > bottom) {
 		stub_addr = bottom;
 		goto retry;
@@ -211,12 +220,14 @@ retry:
 	uval32 data_addr = ALIGN_UP(stub_addr + stub_size, PGSIZE);
 
 	int fd = open(ofstub, O_RDWR);
+
 	ASSERT(fd >= 0, "bad fd for %s\n", ofstub);
 
 	off_t offset = lseek(fd, 0x10, SEEK_SET);
-	ASSERT(offset != ((off_t)-1), "seek failure on %s\n", ofstub);
 
-	write(fd, &data_addr, sizeof(data_addr));
+	ASSERT(offset != ((off_t) - 1), "seek failure on %s\n", ofstub);
+
+	write(fd, &data_addr, sizeof (data_addr));
 
 	close(fd);
 
@@ -235,20 +246,22 @@ parse_args(int argc, char **argv)
 {
 
 	const struct option long_options[] = {
-		{ "name", 1, 0, 'n' },
-		{ "memory", 1, 0, 'm' },
-		{ "crq", 1, 0, 'c' },
-		{ "vterm", 2, 0, 't' },
-		{ "wait", 2, 0, 'w' },
-		{ "help", 0, 0, 'h'},
-		{ "verbose", 1, 0, 'v'}
+		{"name", 1, 0, 'n'},
+		{"memory", 1, 0, 'm'},
+		{"crq", 1, 0, 'c'},
+		{"vterm", 2, 0, 't'},
+		{"wait", 2, 0, 'w'},
+		{"help", 0, 0, 'h'},
+		{"verbose", 1, 0, 'v'}
 	};
 
 	while (1) {
 		int ret = 0;
 		int c = getopt_long(argc, argv, "n:m:c:t::hwv",
 				    long_options, NULL);
-		if (c == -1) return 0;
+
+		if (c == -1)
+			return 0;
 
 		switch (c) {
 		case 'n':
@@ -258,14 +271,16 @@ parse_args(int argc, char **argv)
 			crq = strtoul(optarg, NULL, 16);
 			break;
 		case 'm':{
-			struct laddr_range *lr = &lranges[num_ranges];
-			if (!parse_laddr(optarg, &lr->lr_base, &lr->lr_size)) {
-				++num_ranges;
-			} else {
-				ret = -1;
+				struct laddr_range *lr = &lranges[num_ranges];
+
+				if (!parse_laddr
+				    (optarg, &lr->lr_base, &lr->lr_size)) {
+					++num_ranges;
+				} else {
+					ret = -1;
+				}
+				break;
 			}
-			break;
-		}
 		case 'v':
 			verbose = 1;
 			break;
@@ -298,7 +313,6 @@ parse_args(int argc, char **argv)
 	return 0;
 }
 
-
 static int
 add_memory(uval lpid, uval base, uval size)
 {
@@ -311,8 +325,10 @@ add_memory(uval lpid, uval base, uval size)
 	hargs.args[3] = size;
 	hargs.args[4] = lpid;
 	int ret = hcall(&hargs);
+
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	laddr = hargs.args[0];
 	msg("add memory: %lx %lx -> %llx\n", base, size, laddr);
@@ -321,20 +337,19 @@ add_memory(uval lpid, uval base, uval size)
 	return 0;
 }
 
-
-
 static int
 add_vty(uval32 liobn)
 {
 	const char fmt[] = "/vdevice/vty@%x";
 	char vty_node[sizeof (fmt) + 8];
+
 	snprintf(vty_node, sizeof (vty_node), "/vdevice/vty@%x", liobn);
 
 	of_make_node(vty_node);
 	of_set_prop(vty_node, "name", "vty", -1);
 	of_set_prop(vty_node, "compatible", "hvterm1", -1);
 	of_set_prop(vty_node, "device_type", "serial", -1);
-	of_set_prop(vty_node, "reg", &liobn, sizeof(liobn));
+	of_set_prop(vty_node, "reg", &liobn, sizeof (liobn));
 
 	return 0;
 }
@@ -343,16 +358,19 @@ static uval32
 add_vterm(sval chan, uval lpid)
 {
 	int ret;
+
 	hargs.opcode = H_VIO_CTL;
 	hargs.args[0] = HVIO_ACQUIRE;
 	hargs.args[1] = HVIO_VTERM;
 	hargs.args[2] = 0;
 
-	hcall(&hargs);
+	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	uval32 liobn = hargs.args[0];
+
 	printf("vterm %lx liobn: %x\n", chan, liobn);
 	hargs.opcode = H_RESOURCE_TRANSFER;
 	hargs.args[0] = INTR_SRC;
@@ -363,7 +381,8 @@ add_vterm(sval chan, uval lpid)
 
 	hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	/* FIXME on failure HVIO_RELEASE */
 
@@ -399,7 +418,9 @@ add_vscsi(uval lpid, uval liobn, uval dma_sz)
 
 	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall vscsi transfer failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall vscsi transfer failure: %d " UVAL_CHOOSE("0x%x",
+							       "0x%lx") "\n",
+	       ret, hargs.retval);
 
 	dma[0] = liobn;
 	dma[4] = dma_sz;
@@ -411,9 +432,9 @@ add_vscsi(uval lpid, uval liobn, uval dma_sz)
 	of_set_prop(vscsi_node, "name", "v-scsi", -1);
 	of_set_prop(vscsi_node, "device_type", "vscsi", -1);
 	of_set_prop(vscsi_node, "compatible", "IBM,v-scsi", -1);
-	of_set_prop(vscsi_node, "reg", &val, sizeof(val));
-	of_set_prop(vscsi_node, "ibm,my-dma-window", dma, sizeof(dma));
-	of_set_prop(vscsi_node, "interrupts", &intr, sizeof(intr));
+	of_set_prop(vscsi_node, "reg", &val, sizeof (val));
+	of_set_prop(vscsi_node, "ibm,my-dma-window", dma, sizeof (dma));
+	of_set_prop(vscsi_node, "interrupts", &intr, sizeof (intr));
 
 	return 0;
 }
@@ -422,8 +443,8 @@ static int
 add_vdev(uval lpid, uval vdev)
 {
 	char p[512];
-	int rc;
 	int fd;
+	int rc = -1;
 	static const char vscsis[] = "v-scsi-host\n";
 
 	snprintf(p, sizeof (p), "/sys/devices/vio/%lx/name", vdev);
@@ -434,8 +455,7 @@ add_vdev(uval lpid, uval vdev)
 		rc = read(fd, name, sizeof (name));
 		close(fd);
 		if (rc > 0) {
-			if (strncmp(name,
-				    vscsis, sizeof (vscsis)) == 0 ) {
+			if (strncmp(name, vscsis, sizeof (vscsis)) == 0) {
 				/* we know the lient crq is +1 */
 				++vdev;
 				printf("calling add_vscsi(0x%lx)\n", vdev);
@@ -450,6 +470,7 @@ static int
 add_llan(uval lpid)
 {
 	int ret;
+
 	hargs.opcode = H_VIO_CTL;
 	hargs.args[0] = HVIO_ACQUIRE;
 	hargs.args[1] = HVIO_LLAN;
@@ -457,10 +478,11 @@ add_llan(uval lpid)
 
 	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	uval32 liobn = hargs.args[0];
-	uval64 dma_sz= hargs.args[2];
+	uval64 dma_sz = hargs.args[2];
 
 	hargs.opcode = H_RESOURCE_TRANSFER;
 	hargs.args[0] = INTR_SRC;
@@ -471,36 +493,39 @@ add_llan(uval lpid)
 
 	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	/* FIXME on failure HVIO_RELEASE */
 
-	uval32 dma[] = { liobn, 0, 0, dma_sz >> 32, dma_sz & 0xffffffff};
+	uval32 dma[] = { liobn, 0, 0, dma_sz >> 32, dma_sz & 0xffffffff };
 	uval8 mac[ETH_ALEN] = { 0x02, 0x00, };
-	*(uval32*)&mac[2] = liobn;
+	*(uval32 *)&mac[2] = liobn;
 
 	char llan_node[64];
+
 	snprintf(llan_node, 64, "/vdevice/l-lan@%x", liobn);
 
 	of_make_node(llan_node);
 	of_set_prop(llan_node, "name", "l-lan", -1);
 	of_set_prop(llan_node, "compatible", "IBM,l-lan", -1);
 	of_set_prop(llan_node, "device_type", "network", -1);
-	of_set_prop(llan_node, "reg", &liobn, sizeof(liobn));
+	of_set_prop(llan_node, "reg", &liobn, sizeof (liobn));
 
 	uval32 val = 2;
-	of_set_prop(llan_node, "ibm,#dma-address-cells", &val, sizeof(val));
-	of_set_prop(llan_node, "ibm,#dma-size-cells", &val, sizeof(val));
 
-	val =255;
-	of_set_prop(llan_node, "ibm,mac-address-filters", &val, sizeof(val));
+	of_set_prop(llan_node, "ibm,#dma-address-cells", &val, sizeof (val));
+	of_set_prop(llan_node, "ibm,#dma-size-cells", &val, sizeof (val));
+
+	val = 255;
+	of_set_prop(llan_node, "ibm,mac-address-filters", &val, sizeof (val));
 
 	val = 0;
-	of_set_prop(llan_node, "ibm,vserver", &val, sizeof(val));
-	of_set_prop(llan_node, "local-mac-address", mac, sizeof(mac));
-	of_set_prop(llan_node, "mac-address", mac, sizeof(mac));
-	of_set_prop(llan_node, "ibm,my-dma-window", dma, sizeof(dma));
-	of_set_prop(llan_node, "interrupts", &liobn, sizeof(liobn));
+	of_set_prop(llan_node, "ibm,vserver", &val, sizeof (val));
+	of_set_prop(llan_node, "local-mac-address", mac, sizeof (mac));
+	of_set_prop(llan_node, "mac-address", mac, sizeof (mac));
+	of_set_prop(llan_node, "ibm,my-dma-window", dma, sizeof (dma));
+	of_set_prop(llan_node, "interrupts", &liobn, sizeof (liobn));
 	return 0;
 }
 
@@ -520,8 +545,8 @@ add_htab(uval lpid, uval size)
 	}
 
 	/* 1 << i is now the smallest log2 >= size */
-	lsize -= 6; /* 1/64 of i */
-	
+	lsize -= 6;		/* 1/64 of i */
+
 	hargs.opcode = H_HTAB;
 	hargs.args[0] = lpid;
 	hargs.args[1] = lsize;
@@ -532,12 +557,12 @@ add_htab(uval lpid, uval size)
 	ibm_pft_size[1] = lsize;
 
 	cpu = 0;
-	snprintf(cpu_node, sizeof(cpu_node), "cpus/cpu@%ld", cpu);
+	snprintf(cpu_node, sizeof (cpu_node), "cpus/cpu@%ld", cpu);
 	of_set_prop(cpu_node, "ibm,pft-size",
 		    ibm_pft_size, sizeof (ibm_pft_size));
 
 	printf("ibm,pft-size: 0x%x, 0x%x\n", ibm_pft_size[0], ibm_pft_size[1]);
-	
+
 	return 0;
 }
 
@@ -545,9 +570,12 @@ int
 main(int argc, char **argv)
 {
 	char scratch[128];
+
 	hcall_fd = hcall_init();
 	int ret = parse_args(argc, argv);
-	if (ret < 0) return ret;
+
+	if (ret < 0)
+		return ret;
 	uval total = 0;
 
 	ASSERT(num_ranges > 0, "No memory ranges specified\n");
@@ -558,9 +586,10 @@ main(int argc, char **argv)
 	}
 
 	uval64 rmo_start = lranges[0].lr_base;
-	uval64 rmo_size  = lranges[0].lr_size;
+	uval64 rmo_size = lranges[0].lr_size;
 	uval64 laddr = 0;
 	int count = 0;
+
 	while (count < 255) {
 		char image[256];
 		char image_laddr[256];
@@ -573,11 +602,13 @@ main(int argc, char **argv)
 		++count;
 
 		ret = stat(image, &sbuf);
-		if (ret < 0) continue;
+		if (ret < 0)
+			continue;
 
 		ret = get_file(image_laddr, data, 64);
 		if (ret >= 0) {
 			uval64 l = strtoull(data, NULL, 0);
+
 			ASSERT(errno != ERANGE, "Corrupted data %s\n",
 			       image_laddr);
 
@@ -585,11 +616,13 @@ main(int argc, char **argv)
 		}
 
 		int size = laddr_load(image, rmo_start + laddr);
+
 		laddr = ALIGN_UP(laddr + size, PGSIZE);
 	}
 
 	char pinfo_buf[64];
 	uval64 pinfo;
+
 	ret = get_file("pinfo", pinfo_buf, 64);
 
 	if (ret <= 0 || (pinfo = strtoull(pinfo_buf, NULL, 0)) <= 0) {
@@ -597,6 +630,7 @@ main(int argc, char **argv)
 	}
 
 	uval lpid;
+
 	hargs.opcode = H_CREATE_PARTITION;
 	hargs.args[0] = rmo_start;
 	hargs.args[1] = rmo_size;
@@ -604,14 +638,14 @@ main(int argc, char **argv)
 
 	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	lpid = hargs.args[0];
 
 	set_file_printf("of_tree/ibm,partition-no", "0x%llx", lpid);
 	set_file_printf("lpid", "0x%llx", lpid);
 	set_file("state", "CREATED", -1);
-
 
 	snprintf(scratch, 128,
 		 "rm -rf " HYPE_ROOT "/%s/of_tree/memory*", oh_pname);
@@ -624,6 +658,7 @@ main(int argc, char **argv)
 	total += rmo_size;
 
 	int i = 1;
+
 	while (i < num_ranges) {
 		uval64 base = lranges[i].lr_base;
 		uval64 size = lranges[i].lr_size;
@@ -642,6 +677,7 @@ main(int argc, char **argv)
 	}
 
 	uval64 vty0 = 0;
+
 	if (vtys == 0 && console_ua == 0) {
 		add_vty(0);
 	} else {
@@ -666,7 +702,6 @@ main(int argc, char **argv)
 		}
 	}
 
-
 	if (console_ua) {
 		printf("Registering console vterm: 0x%llx -> 0x%lx:0x%llx\n",
 		       console_ua, lpid, vty0);
@@ -676,13 +711,13 @@ main(int argc, char **argv)
 		hargs.args[2] = vty0;
 		ret = hcall(&hargs);
 		ASSERT(ret >= 0 && hargs.retval == 0,
-		       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+		       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n",
+		       ret, hargs.retval);
 	}
 
 	add_llan(lpid);
 
 	load_of(lranges[0].lr_base, lranges[0].lr_size);
-
 
 	hargs.opcode = H_SET_SCHED_PARAMS;
 	hargs.args[0] = lpid;
@@ -691,13 +726,14 @@ main(int argc, char **argv)
 	hargs.args[3] = 0;
 	ret = hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	hargs.opcode = H_START;
 	hargs.args[0] = lpid;
 
-
 	char buf[64];
+
 	ret = get_file("pc", buf, 64);
 	if (ret >= 0) {
 		buf[ret] = 0;
@@ -707,8 +743,10 @@ main(int argc, char **argv)
 	}
 
 	int x = 2;
+
 	while (x < 8) {
 		int y = 0;
+
 		snprintf(buf, 64, "r%d", x);
 		y = get_file(buf, buf, 64);
 		if (y >= 0) {
@@ -728,7 +766,8 @@ main(int argc, char **argv)
 	printf("Starting...\n");
 	hcall(&hargs);
 	ASSERT(ret >= 0 && hargs.retval == 0,
-	       "hcall failure: %d 0x%lx\n", ret, hargs.retval);
+	       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n", ret,
+	       hargs.retval);
 
 	set_file("state", "RUNNING", -1);
 	return 0;

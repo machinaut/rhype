@@ -27,7 +27,6 @@
 #include <hype.h>
 #include <hype_util.h>
 
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -51,7 +50,7 @@ static int match_sig;
 static int io_sig;
 
 static void
-cleanup(int sig, siginfo_t *si, void *ptr)
+cleanup(int sig, siginfo_t * si, void *ptr)
 {
 	(void)si;
 	(void)ptr;
@@ -61,6 +60,7 @@ cleanup(int sig, siginfo_t *si, void *ptr)
 	}
 	if (ua) {
 		oh_hcall_args args;
+
 		args.opcode = H_FREE_VTERM;
 		args.args[0] = ua;
 		hcall(&args);
@@ -69,34 +69,35 @@ cleanup(int sig, siginfo_t *si, void *ptr)
 }
 
 struct hvpacket {
-	struct hvpacket* next;
+	struct hvpacket *next;
 	int len;
 	uval64 buf[2];
 };
 
-
-struct hvpacket* input = NULL;
-struct hvpacket* output = NULL;
-struct hvpacket** input_tail = &input;
-struct hvpacket** output_tail = &output;
-
+struct hvpacket *input = NULL;
+struct hvpacket *output = NULL;
+struct hvpacket **input_tail = &input;
+struct hvpacket **output_tail = &output;
 
 static void
-msg_sig_fn(int sig, siginfo_t *si, void *ptr)
+msg_sig_fn(int sig, siginfo_t * si, void *ptr)
 {
 	(void)si;
 	(void)ptr;
 
 	oh_hcall_args args;
+
 	while (1) {
 		struct hvpacket *hp;
+
 		args.opcode = H_GET_TERM_CHAR;
 		args.args[0] = ua;
 		hcall(&args);
-		if (args.retval != 0 || args.args[0] == 0) break;
+		if (args.retval != 0 || args.args[0] == 0)
+			break;
 		h_connected = 1;
 
-		hp = malloc(sizeof(struct hvpacket));
+		hp = malloc(sizeof (struct hvpacket));
 		memset(hp->buf, 0, 16);
 		hp->next = NULL;
 		hp->len = args.args[0];
@@ -104,13 +105,15 @@ msg_sig_fn(int sig, siginfo_t *si, void *ptr)
 		if (verbose) {
 			fprintf(stderr, "< %02d %*.*s %016llx %016llx\n",
 				hp->len, hp->len, hp->len,
-				(char*)hp->buf, hp->buf[0], hp->buf[1]);
+				(char *)hp->buf, hp->buf[0], hp->buf[1]);
 		}
 		*input_tail = hp;
 		input_tail = &hp->next;
 	}
-	if (args.retval != 0 && h_connected) exit(0);
-	if (sig != match_sig) exit(0);
+	if (args.retval != 0 && h_connected)
+		exit(0);
+	if (sig != match_sig)
+		exit(0);
 
 }
 
@@ -125,6 +128,7 @@ static int
 config_fd(int fd, int sig)
 {
 	int ret = fcntl(fd, F_SETSIG, sig);
+
 	ASSERT(ret >= 0, "F_SETSIG failed: %d\n", errno);
 	ret = fcntl(fd, F_GETSIG);
 
@@ -135,7 +139,6 @@ config_fd(int fd, int sig)
 	return 0;
 }
 
-
 /* if port == 0 use stdin/stdout instead of socket */
 static void
 vterm_io(int port, uval64 vterm)
@@ -145,6 +148,7 @@ vterm_io(int port, uval64 vterm)
 	int listen_sock = -1;
 	int out_fd = 1;
 	int in_fd = 0;
+
 	fcntl(in_fd, F_SETFL, O_RDONLY);
 
 	ua = vterm;
@@ -157,22 +161,24 @@ vterm_io(int port, uval64 vterm)
 	/* Set up socket to accept connections on */
 	if (port) {
 		listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-		struct sockaddr_in sin = { .sin_family = AF_INET,
-					   .sin_addr = {
-						.s_addr = INADDR_ANY },
-					   .sin_port = htons(port) };
+		struct sockaddr_in sin = {.sin_family = AF_INET,
+			.sin_addr = {
+				     .s_addr = INADDR_ANY},
+			.sin_port = htons(port),
+			.sin_zero = ""
+		};
 
 		{
 			int tmp = 1;
+
 			if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR,
-				       (char *)&tmp, sizeof(tmp)) != 0) {
+				       (char *)&tmp, sizeof (tmp)) != 0) {
 				perror("setsockopt");
 				exit(-1);
 			}
 		}
 
-
-		ret = bind(listen_sock, (struct sockaddr*)&sin, sizeof(sin));
+		ret = bind(listen_sock, (struct sockaddr *)&sin, sizeof (sin));
 		if (ret < 0) {
 			perror("Binding to port");
 			exit(-1);
@@ -185,6 +191,7 @@ vterm_io(int port, uval64 vterm)
 	}
 
 	sigset_t set;
+
 	sigfillset(&set);
 	sigdelset(&set, SIGINT);
 	sigdelset(&set, SIGTERM);
@@ -211,7 +218,8 @@ vterm_io(int port, uval64 vterm)
 
 	fprintf(stderr, "Using signals %d %d\n", match_sig, io_sig);
 	int sock = 0;
-	struct hvpacket* hp;
+	struct hvpacket *hp = NULL;
+
 	do {
 		while (!s_connected && listen_sock != -1) {
 			sock = accept(listen_sock, NULL, 0);
@@ -226,7 +234,8 @@ vterm_io(int port, uval64 vterm)
 		}
 
 		while (output) {
-			struct hvpacket* p = output;
+			struct hvpacket *p = output;
+
 			args.opcode = H_PUT_TERM_CHAR;
 			args.args[0] = ua;
 			args.args[1] = p->len;
@@ -236,13 +245,15 @@ vterm_io(int port, uval64 vterm)
 				fprintf(stderr,
 					"> %02d %*.*s %016llx %016llx\n",
 					hp->len, hp->len, hp->len,
-					(char*)hp->buf, hp->buf[0],
+					(char *)hp->buf, hp->buf[0],
 					hp->buf[1]);
 			}
 			hcall(&args);
 
 			if (args.retval != 0) {
-				printf("hcall error: %ld\n", args.retval);
+				printf("hcall error: "
+				       UVAL_CHOOSE("%d\n", "%ld\n"),
+				       args.retval);
 				break;
 			}
 			if (!h_connected && args.retval == 0) {
@@ -250,11 +261,13 @@ vterm_io(int port, uval64 vterm)
 			}
 			output = p->next;
 			free(p);
-			if (output == NULL) output_tail = &output;
+			if (output == NULL)
+				output_tail = &output;
 		}
 
 		while (input) {
-			struct hvpacket* p = input;
+			struct hvpacket *p = input;
+
 			ret = write(out_fd, &p->buf[0], p->len);
 			if (ret <= 0) {
 				if (port) {
@@ -265,21 +278,22 @@ vterm_io(int port, uval64 vterm)
 			}
 			input = p->next;
 			free(p);
-			if (input == NULL) input_tail = &input;
+			if (input == NULL)
+				input_tail = &input;
 		}
-
 
 		/* Use signals to figure out whether we should read
 		 * from socket or vterm */
 
-		struct timespec t = { 1, 0};
+		struct timespec t = { 1, 0 };
 		int sig = sigtimedwait(&set, NULL, &t);
 
 		if (sig == io_sig) {
 			char buf[16];
+
 			ret = read(in_fd, buf, 16);
 			if (ret > 0) {
-				hp = malloc(sizeof(struct hvpacket));
+				hp = malloc(sizeof (struct hvpacket));
 				memset(hp->buf, 0, 16);
 				hp->len = ret;
 				memcpy(&hp->buf[0], buf, ret);
@@ -308,19 +322,21 @@ int
 main(int argc, char **argv)
 {
 	const struct option long_options[] = {
-		{ "name", 1, 0, 'n' },
-		{ "port", 1, 0, 'p' },
-		{ "help", 0, 0, 'h'},
-		{ "verbose", 1, 0, 'v'}
+		{"name", 1, 0, 'n'},
+		{"port", 1, 0, 'p'},
+		{"help", 0, 0, 'h'},
+		{"verbose", 1, 0, 'v'}
 	};
 	short port = 0;
-	const char* pname;
+	const char *pname = NULL;
+
 	while (1) {
 		int ret = 0;
 		int c = getopt_long(argc, argv, "n:hvp:",
 				    long_options, NULL);
 
-		if (c == -1) break;
+		if (c == -1)
+			break;
 
 		switch (c) {
 		case 'n':
@@ -328,7 +344,8 @@ main(int argc, char **argv)
 			break;
 		case 'p':
 			port = strtoul(optarg, NULL, 0);
-			if (errno == ERANGE) ret = -1;
+			if (errno == ERANGE)
+				ret = -1;
 			break;
 		case 'v':
 			verbose = 1;
@@ -350,6 +367,7 @@ main(int argc, char **argv)
 
 	if (get_file_numeric("res_console_srv", &ua) < 0) {
 		oh_hcall_args hargs;
+
 		hargs.opcode = H_VIO_CTL;
 		hargs.args[0] = HVIO_ACQUIRE;
 		hargs.args[1] = HVIO_VTERM;
@@ -358,13 +376,14 @@ main(int argc, char **argv)
 		int ret = hcall(&hargs);
 
 		ASSERT(ret >= 0 && hargs.retval == 0,
-		       "hcall failure: %d 0x%lx\n",
+		       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n",
 		       ret, hargs.retval);
 		ua = hargs.args[0];
 		set_file_printf("res_console_srv", "0x%llx", ua);
 	}
 
+	if (verbose) printf("Using vterm 0x%llx\n", ua);
+
 	vterm_io(port, ua);
 	return 0;
 }
-
