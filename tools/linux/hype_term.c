@@ -42,7 +42,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
-static uval64 ua = 0;
+static uval ua = 0;
 static uval verbose = 0;
 static uval h_connected = 0;
 static uval s_connected = 1;
@@ -71,7 +71,7 @@ cleanup(int sig, siginfo_t * si, void *ptr)
 struct hvpacket {
 	struct hvpacket *next;
 	int len;
-	uval64 buf[2];
+	uval buf[16 / sizeof(uval)];
 };
 
 struct hvpacket *input = NULL;
@@ -98,12 +98,14 @@ msg_sig_fn(int sig, siginfo_t * si, void *ptr)
 		h_connected = 1;
 
 		hp = malloc(sizeof (struct hvpacket));
-		memset(hp->buf, 0, 16);
+		memset(hp->buf, 0, sizeof(hp->buf));
 		hp->next = NULL;
 		hp->len = args.args[0];
 		memcpy(hp->buf, &args.args[1], hp->len);
 		if (verbose) {
-			fprintf(stderr, "< %02d %*.16s %016llx %016llx\n",
+			fprintf(stderr, "< %02d %*.16s "
+				UVAL_CHOOSE("%08lx %08lx", "%016lx %016lx")
+				"\n",
 				hp->len, hp->len,
 				(char *)hp->buf, hp->buf[0], hp->buf[1]);
 		}
@@ -141,7 +143,7 @@ config_fd(int fd, int sig)
 
 /* if port == 0 use stdin/stdout instead of socket */
 static void
-vterm_io(int port, uval64 vterm)
+vterm_io(int port, uval vterm)
 {
 	oh_hcall_args args;
 	int ret;
@@ -240,18 +242,24 @@ vterm_io(int port, uval64 vterm)
 			args.args[1] = p->len;
 			args.args[2] = p->buf[0];
 			args.args[3] = p->buf[1];
+ 			if (4 == sizeof(uval)) {
+ 				args.args[4] = p->buf[2];
+ 				args.args[5] = p->buf[3];
+ 			}
 			if (verbose) {
 				fprintf(stderr,
-					"> %02d %*.16s %016llx %016llx\n",
+					"> %02d %*.16s "
+					UVAL_CHOOSE("%08lx %08lx",
+						    "%016lx %016lx")
+					"\n",
 					p->len, p->len,
-					(char *)p->buf, p->buf[0],
-					p->buf[1]);
+					(char *)p->buf, p->buf[0], p->buf[1]);
 			}
 			hcall(&args);
 
 			if (args.retval != 0) {
 				printf("hcall error: "
-				       UVAL_CHOOSE("%d\n", "%ld\n"),
+				       UVAL_CHOOSE("%d", "%ld") "\n",
 				       args.retval);
 				break;
 			}
@@ -291,10 +299,10 @@ vterm_io(int port, uval64 vterm)
 		while (sig == io_sig && ret > 0) {
 			char buf[16];
 
-			ret = read(in_fd, buf, 16);
+			ret = read(in_fd, buf, sizeof(buf));
 			if (ret > 0) {
 				hp = malloc(sizeof (struct hvpacket));
-				memset(hp->buf, 0, 16);
+				memset(hp->buf, 0, sizeof(hp->buf));
 				hp->len = ret;
 				memcpy(&hp->buf[0], buf, ret);
 				hp->next = NULL;
@@ -367,7 +375,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	printf("ua: %llx\n", ua);
+	printf("ua: %lx\n", ua);
 	hcall_init();
 
 	if (ua == 0) {
@@ -391,7 +399,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (verbose) fprintf(stderr, "Using vterm 0x%llx\n", ua);
+	if (verbose) fprintf(stderr, "Using vterm 0x%lx\n", ua);
 
 	vterm_io(port, ua);
 	return 0;
