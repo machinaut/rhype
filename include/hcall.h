@@ -150,6 +150,7 @@ extern sval hcall_grant_logical(uval *retvals, uval flags,
 				uval unit_address);
 extern sval hcall_accept_logical(uval *retvals, uval cookie);
 extern sval hcall_rescind_logical(uval *retvals, uval flags, uval cookie);
+extern sval hcall_htab(uval *retvals, uval lpid, uval htab_size);
 
 enum {
 	H_BREAKPOINT	  = 0x1000,	/* Causes HV breakpoint */
