@@ -281,18 +281,11 @@ llan_bdesc(struct llan *l, uval sz)
 }
 
 static sval
-llan_register_locked(struct llan *l, uval uaddr,
-		     uval bl, uval64 rq, uval fl, uval64 mac)
+llan_register_locked(struct llan *l, uval bl, uval64 rq, uval fl, uval64 mac)
 {
 	union tce_bdesc bd;
 	union tce_bdesc *pool;
 	uval pg;
-
-	if (l->ll_registered) {
-		DEBUG_OUT(DBG_LLAN, "%s: lan 0x%lx is already registered\n",
-			  __func__, uaddr);
-		return H_Hardware;
-	}
 
 	assert(l->ll_tce_data.t_tce != NULL, "TCE was not set up!\n");
 	
@@ -415,7 +408,14 @@ llan_register(struct os *os, uval uaddr,
 	if (lock_tryacquire(&l->ll_lock)) {
 		sval ret;
 
-		ret = llan_register_locked(l, uaddr, bl, rq, fl, mac);
+		if (l->ll_registered) {
+			DEBUG_OUT(DBG_LLAN,
+				  "%s: lan 0x%lx is already registered\n",
+				  __func__, uaddr);
+			return H_Hardware;
+		}
+
+		ret = llan_register_locked(l, bl, rq, fl, mac);
 
 		lock_release(&l->ll_lock);
 		xir_default_config(l->ll_interrupt, &os->cpu[0]->thread[0], l);
