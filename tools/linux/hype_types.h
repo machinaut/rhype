@@ -43,10 +43,9 @@ typedef uval64	u64;
 
 #ifdef __PPC__
 #ifdef __PPC64__
+#define UVAL_IS_64
 #include <asm-ppc64/types.h>
 #else
-
-#define UVAL_IS_LL
 
 #include <asm-ppc/types.h>
 #define _PPC64_TYPES_H
