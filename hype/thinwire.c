@@ -489,7 +489,9 @@ configThinWire(struct io_chan *ic)
 	ic->ic_read_avail = thinwireReadAvail;
 
 
-//	activateThinWire();
+#ifndef RELOADER
+	activateThinWire();
+#endif
 
 #else /* USE_THINWIRE_IO */
 	thinwire_ic = ic;
