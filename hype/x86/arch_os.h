@@ -86,7 +86,7 @@ struct os {
 	uval16 po_lpid_tag;	/* OS index, not an ID */
 	uval32 po_lpid;		/* OS ID */
 	struct aipc_services aipc_srv;
-	struct io_chan *po_chan[CHANNEL_PER_OS];
+	struct io_chan *po_chan[CHANNELS_PER_OS];
 	uval po_vt[2];
 	struct page_share_mgr *po_psm;
 	uval16 installed_cpus;

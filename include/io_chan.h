@@ -35,7 +35,7 @@
 #define ZIGGYDEB_CHANNEL 3
 #define IPSEL_CHANNEL    4
 #define NUM_CHANNELS	 5
-#define CHANNEL_PER_OS	 8
+#define CHANNELS_PER_OS	 8
 
 
 /*
