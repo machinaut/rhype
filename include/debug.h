@@ -22,6 +22,8 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#include <types.h>
+
 typedef sval (*debug_out_fn)(const char *fmt, ...);
 
 extern uval debug_level;

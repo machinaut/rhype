@@ -26,6 +26,7 @@
 #include <vm.h>
 #include <logical.h>
 #include <debug.h>
+#include <tlb.h>
 
 sval
 h_vm_map(struct cpu_thread *thread, uval flags, uval pvpn, uval ptel)
