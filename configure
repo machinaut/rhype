@@ -104,7 +104,7 @@ ac_help="$ac_help
 ac_help="$ac_help
   --enable-external-controller don't link controller into hype binary."
 ac_help="$ac_help
-  --with-controller=FILE  OS that gets loaded by hypervisor."
+  --with-controlling-os=FILE  OS that gets loaded by hypervisor."
 ac_help="$ac_help
   --with-controller-images=FILE1[,FILE2[...]]
                           Additional OSes for controller to use.
@@ -1949,19 +1949,20 @@ echo "$ac_t""$EXTERNAL_CONTROLLER" 1>&6
 
 echo $ac_n "checking "for controlling OS"""... $ac_c" 1>&6
 echo "configure:1952: checking "for controlling OS"" >&5
-# Check whether --with-controller or --without-controller was given.
-if test "${with_controller+set}" = set; then
-  withval="$with_controller"
+# Check whether --with-controlling-os or --without-controlling-os was given.
+if test "${with_controlling_os+set}" = set; then
+  withval="$with_controlling_os"
   LOADIMAGE="$withval"
 else
   LOADIMAGE="\$(top_builddir)/test/controller"
+   allow_external_images=yes
 fi
 
 
 echo "$ac_t""$LOADIMAGE" 1>&6
 
 echo $ac_n "checking "for external images to add to controllers OS list"""... $ac_c" 1>&6
-echo "configure:1965: checking "for external images to add to controllers OS list"" >&5
+echo "configure:1966: checking "for external images to add to controllers OS list"" >&5
 # Check whether --with-controller-images or --without-controller-images was given.
 if test "${with_controller_images+set}" = set; then
   withval="$with_controller_images"
@@ -1969,6 +1970,9 @@ if test "${with_controller_images+set}" = set; then
 fi
 
     
+if test "$allow_external_images" != "yes"; then
+  EXTERNAL_IMAGES=
+fi
 echo "$ac_t""$EXTERNAL_IMAGES" 1>&6
 
 for f in $EXTERNAL_IMAGES; do
@@ -1978,7 +1982,7 @@ for f in $EXTERNAL_IMAGES; do
 done
 
 echo $ac_n "checking "whether to turn on debugging"""... $ac_c" 1>&6
-echo "configure:1982: checking "whether to turn on debugging"" >&5
+echo "configure:1986: checking "whether to turn on debugging"" >&5
 # Check whether --enable-debug or --disable-debug was given.
 if test "${enable_debug+set}" = set; then
   enableval="$enable_debug"
@@ -1994,7 +1998,7 @@ if test $enable_debug = "yes"; then
 fi
 
 echo $ac_n "checking "whether to turn on HW debugging"""... $ac_c" 1>&6
-echo "configure:1998: checking "whether to turn on HW debugging"" >&5
+echo "configure:2002: checking "whether to turn on HW debugging"" >&5
 # Check whether --enable-hwdebug or --disable-hwdebug was given.
 if test "${enable_hwdebug+set}" = set; then
   enableval="$enable_hwdebug"
@@ -2009,7 +2013,7 @@ if test $enable_hwdebug = "yes"; then
 fi
 
 echo $ac_n "checking "C Optimization Flags"""... $ac_c" 1>&6
-echo "configure:2013: checking "C Optimization Flags"" >&5
+echo "configure:2017: checking "C Optimization Flags"" >&5
 # Check whether --with-copt or --without-copt was given.
 if test "${with_copt+set}" = set; then
   withval="$with_copt"
@@ -2024,7 +2028,7 @@ FINLINE_LIMIT="-finline-limit=1000"
 for T in HOST BUILD; do 
   lcase=`echo ${T} | tr A-Z a-z`
   echo $ac_n "checking whether the ${lcase} gcc needs ${FINLINE_LIMIT}""... $ac_c" 1>&6
-echo "configure:2028: checking whether the ${lcase} gcc needs ${FINLINE_LIMIT}" >&5
+echo "configure:2032: checking whether the ${lcase} gcc needs ${FINLINE_LIMIT}" >&5
   prefix=`eval echo \$\{${T}_TOOLS_PREFIX\}`
   gccver=`${prefix}gcc --version | head -n 1`
   case "$gccver" in
@@ -2041,7 +2045,7 @@ done
 
 
 echo $ac_n "checking "Allow compiler warnings in build"""... $ac_c" 1>&6
-echo "configure:2045: checking "Allow compiler warnings in build"" >&5
+echo "configure:2049: checking "Allow compiler warnings in build"" >&5
 # Check whether --enable-warn or --disable-warn was given.
 if test "${enable_warn+set}" = set; then
   enableval="$enable_warn"
@@ -2096,7 +2100,7 @@ if test $allow_warn = "no"; then
 fi
 
 echo $ac_n "checking for gcc language headers""... $ac_c" 1>&6
-echo "configure:2100: checking for gcc language headers" >&5
+echo "configure:2104: checking for gcc language headers" >&5
 #
 # stddef.h must be a language header so ask gcc where it is. older gcc
 # will not take a directory
@@ -2109,7 +2113,7 @@ echo "$ac_t""${HOST_GCC_INCLUDE}" 1>&6
 # sort and uniquify IO_CHANNELS
 IO_CHANNELS=`echo ${IO_CHANNELS} | tr -s ' ' '\n' | sort -u | tr '\n' ' '`
 echo $ac_n "checking for all supported IO Channels""... $ac_c" 1>&6
-echo "configure:2113: checking for all supported IO Channels" >&5
+echo "configure:2117: checking for all supported IO Channels" >&5
 echo "$ac_t""${IO_CHANNELS}" 1>&6
 
 #

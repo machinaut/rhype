@@ -14,6 +14,7 @@ dnl
 dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+dnl
 dnl $Id$
 dnl
 
@@ -499,10 +500,11 @@ AC_MSG_RESULT($EXTERNAL_CONTROLLER)
 
 dnl get the first os image
 AC_MSG_CHECKING("for controlling OS")
-AC_ARG_WITH(controller,
-  [  --with-controller=FILE  OS that gets loaded by hypervisor.],
+AC_ARG_WITH(controlling-os,
+  [  --with-controlling-os=FILE  OS that gets loaded by hypervisor.],
   [LOADIMAGE="$withval"],
-  [LOADIMAGE="\$(top_builddir)/test/controller"])
+  [LOADIMAGE="\$(top_builddir)/test/controller"
+   allow_external_images=yes])
 
 AC_MSG_RESULT($LOADIMAGE)
 
@@ -514,6 +516,9 @@ AC_ARG_WITH(controller-images,
 			    Only useful to the default controlling OS.],
   [EXTERNAL_IMAGES=`echo $withval | tr ',' ' '`])
     
+if test "$allow_external_images" != "yes"; then
+  EXTERNAL_IMAGES=
+fi
 AC_MSG_RESULT($EXTERNAL_IMAGES)
 
 for f in $EXTERNAL_IMAGES; do
