@@ -201,11 +201,6 @@ launch_image(uval init_mem, uval init_mem_size, const char* name, uval ofd)
 			partitions[i].init_mem = init_mem;
 			partitions[i].init_mem_size = init_mem_size;
 			partitions[i].name = name;
-
-			/* FIXME: arch specific */
-#ifdef __PPC__
-			partitions[i].log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
-#endif
 			break;
 		}
 		if (i == MAX_MANAGED_PARTITIONS) {
@@ -296,12 +291,6 @@ reload_image(const char* name, uval ofd)
 	ps->init_mem = 0;
 	ps->init_mem_size = CHUNK_SIZE;
 	ps->name = name;
-
-	/* FIXME: arch specific */
-#ifdef __PPC__
-	ps->log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
-#endif
-
 
 	while (image_names[rc] != NULL && size == 0) {
 		if (strcmp(image_names[rc], name) == 0) {
