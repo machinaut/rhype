@@ -19,7 +19,7 @@
 
 
 <!--
-    In DocBook terms, a white paper is and article.
+    In DocBook terms, a white paper is an article.
 -->
 <article status="draft" lang="en">
   <artheader>
@@ -61,7 +61,7 @@
 	  <para>
 	    to validate features developed for new processors like the
 	    <ulink
-		   url="http://www-03.ibm.com/chips/news/2004/1129_cell1.html">Cell</ulink>
+		   url="http://www-03.ibm.com/chips/news/2004/1129_cell1.html">Cell</ulink>.
 	  </para>
 	</listitem>
 	<listitem>
@@ -69,7 +69,7 @@
 	    to study future architecture ideas and functions for the
 	    high performance computing community within the <ulink
 	    url="http://domino.research.ibm.com/comm/pr.nsf/pages/news.20030710_darpa.html">PERCS</ulink>
-	    project for DARPA
+	    project for DARPA.
 	  </para>
 	</listitem>
 	<listitem>
@@ -85,13 +85,13 @@
     <para>
       The Research Hypervisor was designed from the start to be
       multi-platform, and today supports both the Power and x86
-      architectures. On Power, it conforms to the PAPR interfaces used
+      architectures. On Power, it conforms to the interfaces used
       by Linux running on IBM's commercial POWER Hypervisor in the new
       <ulink
       url="http://www-1.ibm.com/servers/eserver/pseries/hardware/pseries_family.html">POWER5-based
       servers</ulink>, and hence runs unmodified Linux
       distributions. On Intel we support a modified Linux kernel and
-      demonstrate the multi-platform characteristics of the PAPR
+      demonstrate the multi-platform characteristics of the POWER Hypervisor
       interfaces.
     </para>
   </section>
@@ -121,10 +121,10 @@
       x86 is Leendert Van Doorn.
     </para>
     <para>
-      On PowerPC rHype can run unmodified Linux distrubutions. Also,
+      On PowerPC rHype can run unmodified Linux distributions. Also,
       on Power we support the <ulink
       url="www.research.ibm.com/k42">K42</ulink> operating system
-      kernel, and a libary OS that we have been developing for High
+      kernel, and a library OS that we have been developing for High
       Performance Computing applications. On Intel we support a
       modified Linux kernel.
     </para>
@@ -135,13 +135,13 @@
       <simplelist>
 	<member>
 	  From-scratch implementation and design decisions that allow
-	  the core trusted code base to be tiny making it appropriate
+	  the core trusted code base to be tiny, making it appropriate
 	  for secure design.
 	</member>
 	<member>
 	  Memory management architecture designed to enable large
 	  pages, to be cache efficient on common operations and
-	  friendly to future self virtualizing I/O devices.
+	  friendly to future self-virtualizing I/O devices.
 	</member>
 	<member>
 	  Source configuration system and careful choice of internal
@@ -151,11 +151,11 @@
 	</member>
 	<member>
 	  On Intel, design decisions that result in a small set of
-	  changes to Linux.
+	  changes to Linux. (The Power Linux kernel runs unmodified.)
 	</member>
 	<member>
 	  A reduced and open source implementation of the proven LPAR
-	  environment used in IBM's commercial hypervisors; unmodified
+	  environment used in IBM's commercial Hypervisors; unmodified
 	  distributions are supported. Interfaces are designed with
 	  SMP/SMT clients from the beginning.
 	</member>
@@ -165,9 +165,9 @@
   <section>
     <title>Playing with the Research Hypervisor</title>
     <para>
-      Unfortunately we are unable to accept patches at this time, we
-      do wish to make our source available for discussion and use by
-      a larger group.
+      Unfortunately we are unable to accept patches at this time.
+      However, we do wish to make our source available for discussion
+      and use by a larger group.
     </para>
     <section>
       <title>Using the CVS Repository</title>
@@ -177,9 +177,10 @@
 	  :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
 	</envar>.
 	Alternately add
-	<optional>
+	<command>
 	  -d :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
-	</optional> in the CVS commands below (place it immediately
+	</command>
+	 in the CVS commands below (place it immediately
 	after <command>cvs</command>, before any other arguments).
       </para>
       <para>
@@ -203,17 +204,17 @@
 	<orderedlist>
 	  <listitem>
 	    <formalpara>
-	      <title>Mailing List.</title>
+	      <title>Mailing List</title>
 	      <para>
-		Comming soon.
+		Coming soon.
 	      </para>
 	    </formalpara>
 	  </listitem>
 	  <listitem>
 	    <formalpara>
-	      <title>Hacker's Guide.</title>
+	      <title>Hacker's Guide</title>
 	      <para>
-		Can be build like all other documentation, a recent
+		Can be build like all other documentation. A recent
 		snap shot is <ulink url="HackersGuide.shtml">here
 		(HackersGuide)</ulink> for your amusement.
 	      </para>
