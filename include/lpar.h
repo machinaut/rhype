@@ -134,7 +134,7 @@
 #define H_SEND_ASYNC		0x6040
 #define H_PCI_CONFIG		0x6044
 #define H_EIC_CONFIG		0x6048
-#define	H_REUSE_0x604c		0x604c
+#define	H_HTAB		0x604c
 
 /* bp.h */
 #define H_SPC_ACQUIRE		0x6050
