@@ -41,6 +41,8 @@ struct partition_status {
 	uval log_htab_bytes;
 };
 
+extern uval log_htab_bytes;
+
 #define MAX_MANAGED_PARTITIONS 23
 extern struct partition_status partitions[];
 
