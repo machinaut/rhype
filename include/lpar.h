@@ -247,10 +247,6 @@
 #define H_VM_MAP_LARGE_PAGE             (1UL<<(63-44))
 #define H_VM_MAP_ZERO_PAGE              (1UL<<(63-48))
 
-
-/* FIXME: PLPAR makes this 32bit (s.a. OpenPIC?) but the STIDC IIC
- * will probably 64-bits */
-
 #define XIRR_CLASS_HWDEV	0
 #define XIRR_CLASS_IIC		0
 #define XIRR_CLASS_LLAN		1

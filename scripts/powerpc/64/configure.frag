@@ -143,6 +143,15 @@ EOF
         ;;
     esac
     ;;
+  ppc64-*)
+    script=`echo "${PLATFORM}" | sed -e 's/ppc64-//'`
+    script=`echo "${script}" | sed -e 's/-.*//'`
+    if test -r "${srcdir}/${script}/configure.frag"; then
+      . ${srcdir}/${script}/configure.frag
+    else
+      { echo "configure: error: ${PLATFORM}: Not A Supported Platform!" 1>&2; exit 1; }
+    fi
+    ;;
   *)
     { echo "configure: error: ${PLATFORM}: Not A Supported Platform!" 1>&2; exit 1; }
     ;;
@@ -152,7 +161,7 @@ echo "Platform adaptions done"
 
 HOST_LDFLAGS="${HOST_LDFLAGS} -L\$(top_builddir)/lib/\$(ISA)/\$(CPU_GRP)"
 
-if test ${enable_openfw} = "yes"; then
+if test "${enable_openfw}" = "yes"; then
    of_opt_outputs="${of_opt_outputs} plugins/openfw/powerpc/64/Makefile"
 fi
 
