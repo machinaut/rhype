@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -88,7 +88,7 @@ vtf_write(struct vt_fifo *f, uval c, const char buf[16])
 	}
 
 	/* never catch up */
-	--sz;	
+	--sz;
 
 	if (sz >= c) {
 		uval i;
@@ -136,7 +136,7 @@ vtf_read(struct vt_fifo *f, char *buf)
 			f->vtf_r = 0;
 			f->vtf_w = 0;
 		}
-			
+
 		f->vtf_full = 0;
 	}
 	lock_release(&f->vtf_lock);
@@ -152,7 +152,7 @@ vtf_alloc(struct vt_fifo *f[2], uval sz)
 	uval fsz;
 
 	sz = PGSIZE;
-	
+
 	half = (sz / 2);
 	fsz = half - sizeof (struct vt_fifo);
 
@@ -207,7 +207,7 @@ vt_getsres(struct vt *vt)
 	struct vios_resource *res;
 
 	res = vt_getvres(vt);
-	
+
 	return &res->vr_res;
 }
 
@@ -217,7 +217,7 @@ vt_getos(struct vt *vt)
 	struct vios_resource *res;
 
 	res = vt_getvres(vt);
-	
+
 	return res->vr_res.sr_owner;
 }
 
@@ -235,7 +235,7 @@ vt_char_put(struct cpu_thread *thread, uval chan, uval c, const char buf[16])
 	uval sz;
 
 	if (os == ctrl_os) {
-		if (chan < CHANNEL_PER_OS) {
+		if (chan < CHANNELS_PER_OS) {
 			/* punt for now */
 			return vtty_put_term_char16(thread, chan, c, buf);
 		}
@@ -278,7 +278,7 @@ vt_char_get(struct cpu_thread *thread, uval chan, char *buf)
 	uval sz;
 
 	if (os == ctrl_os) {
-		if (chan < CHANNEL_PER_OS) {
+		if (chan < CHANNELS_PER_OS) {
 			/* punt for now */
 			return vtty_get_term_char16(thread, chan, buf);
 		}
@@ -295,7 +295,7 @@ vt_char_get(struct cpu_thread *thread, uval chan, char *buf)
 	if (vt == NULL) {
 		return  H_Parameter;
 	}
-	
+
 	if (vt_getos(vt) != os) {
 		return H_Parameter;
 	}
@@ -423,7 +423,7 @@ vt_release_internal(struct vt *vt)
 	}
 	xir_default_config(vt->vt_interrupt, NULL, NULL);
 	hfree(vt, sizeof(*vt));
-	
+
 	return 1;
 }
 
@@ -466,7 +466,7 @@ vts_acquire(struct cpu_thread *thread, uval dma_range)
 			vts->vt_put = f[1];
 			vts->vt_dma_size = dma_range;
 			vt_res_init(thread, vts);
-			
+
 			return_arg(thread, 1,
 				   vts->vt_res[0].vr_liobn);
 			return_arg(thread, 2, 0);
@@ -477,7 +477,7 @@ vts_acquire(struct cpu_thread *thread, uval dma_range)
 	}
 	vt_release_internal(vts);
 	return H_UNAVAIL;
-		
+
 }
 
 static sval
@@ -488,7 +488,7 @@ vtc_acquire(struct cpu_thread *thread)
 	vtc = vt_acquire_internal();
 	if (vtc) {
 		vt_res_init(thread, vtc);
-			
+
 		vtc->vt_dma_size = 0;
 
 		/* add to unpaired list */
@@ -570,7 +570,7 @@ vts_register(struct os *os, uval ua, uval lpid, uval pua)
 	if (vt_getos(pvt) != pos) {
 		return H_Parameter;
 	}
-	
+
 	if (vt_isserver(pvt)) {
 		/* pvt is not a client */
 		return H_Parameter;
@@ -591,7 +591,7 @@ vts_register(struct os *os, uval ua, uval lpid, uval pua)
 			lock_release(&vt_unpaired.vu_lock);
 
 			DEBUG_OUT(DBG_VTERM, "%s: success\n", __func__);
-				
+
 			return H_Success;
 		}
 		vt->vt_partner = NULL;
@@ -608,7 +608,7 @@ vts_free(struct os *os, uval ua)
 	if (os != ctrl_os) {
 		return H_Parameter;
 	}
-	if (ua < CHANNEL_PER_OS) {
+	if (ua < CHANNELS_PER_OS) {
 		return  H_Parameter;
 	}
 	vt = vt_get(ua);
@@ -631,7 +631,7 @@ vts_partner_info(struct os *os, uval ua, uval plpid, uval pua, uval lba)
 	DEBUG_OUT(DBG_VTERM, "%s: enter: ua: 0x%lx, lpid: 0x%lx, pua: 0x%lx\n",
 		  __func__, ua, plpid, pua);
 
-	if (ua < CHANNEL_PER_OS) {
+	if (ua < CHANNELS_PER_OS) {
 		return  H_Parameter;
 	}
 	vt = vt_get(ua);
@@ -818,7 +818,7 @@ vt_invalidate(struct os *os, uval liobn)
 	return H_Success;
 }
 static sval
-vt_return(struct os *os, uval liobn)
+vt_return (struct os *os, uval liobn)
 {
 	struct vt *vt;
 

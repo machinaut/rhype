@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -29,9 +29,11 @@
 #include <util.h>
 #include <thinwire.h>
 #include <asm.h>
+#include <mmu.h>
 
 #define RBR 0			/* Receiver Buffer Register */
 #define THR 0			/* Transmitter Holding Register */
+#define IER 1			/* Interrupt Enable Register */
 #define IIR 2			/* Interrupt Identification Register */
 #define FCR 2			/* FIFO Control Register */
 #define LCR 3			/* Line Control Register */
@@ -45,6 +47,8 @@
 #define LCR_8N1 0x03		/* LCR value for 8-bit word, no parity, 1 stop bit */
 #define MCR_DTR 0x01		/* MCR value for Data-Terminal-Ready */
 #define MCR_RTS 0x02		/* MCR value for Request-To-Send */
+#define MCR_OUT1 0x4
+#define MCR_OUT2 0x8
 #define LSR_THRE 0x20		/* LSR value for Transmitter-Holding-Register-Empty */
 #define LSR_DR 0x01		/* LSR value for Data-Ready */
 #define MSR_DSR 0x20		/* MSR value for Data-Set-Ready */
@@ -57,8 +61,6 @@
 	io_out8((uval8*)(uart->comBase+(r)),(uval8)(v));
 
 /* Base address for UART. */
-
-static int old_brdivisor;
 
 /* assumes a 1.8432 MHz clock */
 unsigned std_divisors[][2] = {
@@ -84,7 +86,9 @@ unsigned std_divisors[][2] = {
 
 static sval uartNS16750_write_avail(struct io_chan *ops);
 static sval uartNS16750_write(struct io_chan *ops, const char *buf, uval len);
+#ifdef ENABLE_HWFLOW
 static sval uartNS16750_read_avail(struct io_chan *ops);
+#endif
 static sval uartNS16750_read(struct io_chan *ops, char *buf, uval len);
 static sval uartNS16750_read_all(struct io_chan *ops, char *buf, uval len);
 static void uartNS16750_noread(struct io_chan *ops);
@@ -113,7 +117,11 @@ struct uart uartNS16750 = {
 		.ic_write_avail = uartNS16750_write_avail,
 		.ic_read = uartNS16750_read,
 		.ic_read_all = uartNS16750_read_all,
+#ifdef ENABLE_HWFLOW
 		.ic_read_avail = uartNS16750_read_avail,
+#else
+		.ic_read_avail = 0,
+#endif
 		.ic_noread = uartNS16750_noread}
 };
 
@@ -158,9 +166,6 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	struct uart *uart = &uartNS16750;
 
 /* XXX 'baudrate' is not 9600, it's DIVISOR/9600 (for example) */
-	uval8 brhi,
-	      brlo;
-
 #ifdef THINWIRE_BAUDRATE
 	if (baudrate == new_speed) {
 		new_speed = 0;
@@ -195,16 +200,12 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	 */
 	if (baudrate != 0) {
 		comOut(LCR, LCR_BD + LCR_8N1);
-		comIn(BD_LB, brlo);
-		comIn(BD_UB, brhi);
-		old_brdivisor = (brhi << 8) + brlo;
 
 		comOut(BD_LB, baudrate & 0xff);
 		comOut(BD_UB, baudrate >> 8);
 		comOut(LCR, LCR_8N1);
 		comOut(FCR, FCR_FE);
 	}
-
 	comOut(MCR, 0);
 
 #ifdef DEBUG
@@ -302,6 +303,7 @@ uartNS16750_read(struct io_chan *ops, char *buf, uval len)
 	return l;
 }
 
+#ifdef ENABLE_HWFLOW
 static sval
 uartNS16750_read_avail(struct io_chan *ops)
 {
@@ -311,6 +313,7 @@ uartNS16750_read_avail(struct io_chan *ops)
 	comIn(LSR, lsr);
 	return ((lsr & LSR_DR) == LSR_DR);
 }
+#endif
 
 static void
 uartNS16750_noread(struct io_chan *ops)
