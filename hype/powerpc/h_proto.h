@@ -24,5 +24,6 @@
 #include_next <h_proto.h>
 
 extern sval h_rtas(struct cpu_thread *, uval argp, uval privp);
+extern sval h_htab(struct cpu_thread *thread, uval lpid, uval log_size);
 
 #endif /* ! _HYPE_POWERPC_HYPE_CALLS_H */
