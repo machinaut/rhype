@@ -14,12 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- $Id$
  *
- * Hypervisor call implementation for VM calls for the Cell processor.
- * 32-bit OSes not yet supported.
- *
- * @@@ Developed from scratch, so can be released under any licenses.
+ * $Id$
  */
 
 #include <config.h>
