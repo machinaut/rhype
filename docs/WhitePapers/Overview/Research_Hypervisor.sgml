@@ -51,14 +51,14 @@
   <abstract>
     <para>
       Hypervisors allow different operating systems or different
-      instances of a single operating system to run on the same HW at
-      the same time.  In this sense, Hypervisors resemble virtual
-      machine systems such as VMWare. However, recent developments in
-      Hypervisors have shown that performance need not be compromised
-      as it is with VM systems[XEN].  An OS, and its applications,
-      running on top of a Hypervisor, and its applications, can run at
-      the native speed of the machine; in this steady state, the OS
-      need never use Hypervisor services.
+      instances of a single operating system to run on the same
+      hardware at the same time.  In this sense, Hypervisors resemble
+      virtual machine systems such as VMWare. However, recent
+      developments in Hypervisors have shown that performance need not
+      be compromised as it is with VM systems[XEN].  An OS, and its
+      applications, running on top of a Hypervisor, and its
+      applications, can run at the native speed of the machine; in
+      this steady state, the OS need never use Hypervisor services.
     </para>
   </abstract>
   <section>
@@ -88,13 +88,13 @@
       </comment> 
 
       Para-virtualization requires the software that runs in the
-      &LPAR; to be aware that it is not running on <quote>bare
-      metal</quote>.  This &LPAR; <quote>awarness</quote> comes from
-      the use of SW abstractions to deal with the loss of access to
-      certain specific machine resources that are normally the domain
-      of the software.  These resources are abstracted by a series of
-      interfaces to the Hypervisor (&HV;), known as Hypervisor Calls
-      (or &hcall;s).
+      &LPAR; to be aware that it is <emphasis>not</emphasis> running
+      on <quote>bare metal</quote>.  This &LPAR;
+      <quote>awarness</quote> comes from the use of SW abstractions to
+      deal with the loss of access to certain specific machine
+      resources that are normally the domain of the software.  These
+      resources are abstracted by a series of interfaces to the
+      Hypervisor (&HV;), known as Hypervisor Calls (or &hcall;s).
     </para>
     <para>
       The Hypervisor is primarily concerned with the management of
@@ -140,26 +140,27 @@
     </para>
     <para>
       The IBM PHYP Hypervisor product, which was released with the
-      recent Squadron pSeries machines, is the first software &HV; to
-      take advantage of this new processor mode.  It is capable of
-      running several heterogeneous Operating systems at once, and
-      provides each &LPAR; with an amazing array of RAS, high end IO,
-      and server consolidation benefits [Ref].  Other processor
-      manufacturers, in particular Intel and AMD, are also designing
-      (or have designed) architectural enhancements that introduce a
-      similar processor mode to their processors.  Regardless of
-      whether or not this new processor mode exists, this document
-      shall refer to the processor mode that the &HV; executes in as
-      <quote>Hypervisor Mode</quote>.
+      recent Squadron pSeries machines[Ref], is the first software
+      &HV; to take advantage of this new processor mode.  It is
+      capable of running several heterogeneous operating systems at
+      once, and provides each &LPAR; with an amazing array of RAS,
+      high end IO, and server consolidation benefits [Ref].  Other
+      processor manufacturers, in particular Intel and AMD, are also
+      designing (or have designed) architectural enhancements that
+      introduce a similar processor mode to their processors.
+      Regardless of whether or not this new processor mode exists,
+      this document shall refer to the processor mode that the &HV;
+      executes in as <quote>Hypervisor Mode</quote>.
     </para>
     <para>
       This project began as an open source reference implementation of
       the PHYP para-virtualization interfaces as defined by the Power
-      Architecture Platform Requirements in order to explore new
-      processor and architecture innovations.  It is evolving in to a
-      &HV; core that is capable is creating a common &LPAR;
-      environment on several different architectures with and without
-      explicit &HV; support.
+      Architecture Platform Requirements (<acronym>PAPR</acronym>) in
+      order to explore new processor and architecture innovations.  It
+      is evolving in to a &HV; core that is capable is creating a
+      common &LPAR; environment on a multitude of different
+      architectures with and without explicit &HV; support, the ia32
+      architecture being the most robust example of this ability.
     </para>
   </section>
   <section>
@@ -262,7 +263,7 @@
 	  simplifies and reduces the meta-data necessary for the &HV;
 	  to maintain the access, translation, and (in particular
 	  cases) reverse translation information that is required to
-	  manage several logical address spaces.
+	  manage several logical address spaces.  
 	</para>
 	<para>
 	  The logical address space also has a <acronym>RAS</acronym>
