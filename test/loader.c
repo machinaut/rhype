@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -89,7 +89,7 @@ vty_setup(struct partition_status *ps)
 
 	rc = hcall_register_vterm(NULL, vty, ps->lpid, 0);
 	assert(rc == H_Success, "could not register vterm: 0x%lx\n", vty);
-		
+
 	return 1;
 #else
 	return ps == ps;
@@ -201,6 +201,7 @@ launch_image(uval init_mem, uval init_mem_size, const char* name, uval ofd)
 			partitions[i].init_mem = init_mem;
 			partitions[i].init_mem_size = init_mem_size;
 			partitions[i].name = name;
+			partitions[i].log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
 			break;
 		}
 		if (i == MAX_MANAGED_PARTITIONS) {
@@ -291,6 +292,7 @@ reload_image(const char* name, uval ofd)
 	ps->init_mem = 0;
 	ps->init_mem_size = CHUNK_SIZE;
 	ps->name = name;
+	ps->log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
 
 	while (image_names[rc] != NULL && size == 0) {
 		if (strcmp(image_names[rc], name) == 0) {
