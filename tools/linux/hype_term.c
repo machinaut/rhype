@@ -103,8 +103,8 @@ msg_sig_fn(int sig, siginfo_t * si, void *ptr)
 		hp->len = args.args[0];
 		memcpy(hp->buf, &args.args[1], hp->len);
 		if (verbose) {
-			fprintf(stderr, "< %02d %*.*s %016llx %016llx\n",
-				hp->len, hp->len, hp->len,
+			fprintf(stderr, "< %02d %*.16s %016llx %016llx\n",
+				hp->len, hp->len,
 				(char *)hp->buf, hp->buf[0], hp->buf[1]);
 		}
 		*input_tail = hp;
@@ -242,10 +242,10 @@ vterm_io(int port, uval64 vterm)
 			args.args[3] = p->buf[1];
 			if (verbose) {
 				fprintf(stderr,
-					"> %02d %*.*s %016llx %016llx\n",
-					hp->len, hp->len, hp->len,
-					(char *)hp->buf, hp->buf[0],
-					hp->buf[1]);
+					"> %02d %*.16s %016llx %016llx\n",
+					p->len, p->len,
+					(char *)p->buf, p->buf[0],
+					p->buf[1]);
 			}
 			hcall(&args);
 
@@ -314,14 +314,15 @@ vterm_io(int port, uval64 vterm)
 static void
 usage()
 {
-	printf("hype_term [-n|--name <lpar>] "
-	       "[-v|--verbose] [-p|--port <port>]\n");
+	printf("hype_term [-v|--verbose] [-p|--port <port>] "
+	       "[-n|--name <lpar>] [-u|--unit <ua>]\n");
 }
 
 int
 main(int argc, char **argv)
 {
 	const struct option long_options[] = {
+		{"unit", 1, 0, 'u'},
 		{"name", 1, 0, 'n'},
 		{"port", 1, 0, 'p'},
 		{"help", 0, 0, 'h'},
@@ -332,13 +333,18 @@ main(int argc, char **argv)
 
 	while (1) {
 		int ret = 0;
-		int c = getopt_long(argc, argv, "n:hvp:",
+		int c = getopt_long(argc, argv, "u:n:hvp:",
 				    long_options, NULL);
 
 		if (c == -1)
 			break;
 
 		switch (c) {
+		case 'u':
+			ua = strtoul(optarg, NULL, 0);
+			if (errno == ERANGE)
+				ret = -1;
+			break;
 		case 'n':
 			pname = optarg;
 			break;
@@ -361,28 +367,31 @@ main(int argc, char **argv)
 		}
 	}
 
-	oh_set_pname(pname);
-
+	printf("ua: %llx\n", ua);
 	hcall_init();
 
-	if (get_file_numeric("res_console_srv", &ua) < 0) {
-		oh_hcall_args hargs;
+	if (ua == 0) {
+		oh_set_pname(pname);
+		if (get_file_numeric("res_console_srv", &ua) < 0) {
+			oh_hcall_args hargs;
 
-		hargs.opcode = H_VIO_CTL;
-		hargs.args[0] = HVIO_ACQUIRE;
-		hargs.args[1] = HVIO_VTERM;
-		hargs.args[2] = PGSIZE;
+			hargs.opcode = H_VIO_CTL;
+			hargs.args[0] = HVIO_ACQUIRE;
+			hargs.args[1] = HVIO_VTERM;
+			hargs.args[2] = PGSIZE;
 
-		int ret = hcall(&hargs);
+			int ret = hcall(&hargs);
 
-		ASSERT(ret >= 0 && hargs.retval == 0,
-		       "hcall failure: %d " UVAL_CHOOSE("0x%x", "0x%lx") "\n",
-		       ret, hargs.retval);
-		ua = hargs.args[0];
-		set_file_printf("res_console_srv", "0x%llx", ua);
+			ASSERT(ret >= 0 && hargs.retval == 0,
+			       "hcall failure: %d "
+			       UVAL_CHOOSE("0x%x", "0x%lx") "\n",
+			       ret, hargs.retval);
+			ua = hargs.args[0];
+			set_file_printf("res_console_srv", "0x%llx", ua);
+		}
 	}
 
-	if (verbose) printf("Using vterm 0x%llx\n", ua);
+	if (verbose) fprintf(stderr, "Using vterm 0x%llx\n", ua);
 
 	vterm_io(port, ua);
 	return 0;
