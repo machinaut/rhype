@@ -504,11 +504,6 @@ struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
 static void __gdbstub
 activateThinWire()
 {
-#ifdef THINWIRE_BAUDRATE
-	const char *speed = STRINGIFY(THINWIRE_BAUDRATE);
-#else
-	const char *speed = NULL;
-#endif
 
 	char buf[32];
 	int j = 0;
@@ -518,6 +513,8 @@ activateThinWire()
 	resetThinwire();
 	thinwire_activated = 1;
 
+#ifdef THINWIRE_BAUDRATE
+	const char *speed = STRINGIFY(THINWIRE_BAUDRATE);
 	if (speed == NULL) {
 		return;
 	}
@@ -554,5 +551,5 @@ activateThinWire()
 
 	/* Wait for last message to be replayed at new speed */
 	thinwire_ic->ic_read_all(thinwire_ic, buf, len + 5);
-
+#endif
 }
