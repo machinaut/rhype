@@ -38,6 +38,7 @@ struct partition_status {
 	uval slot;
 	uval32 active;
 	uval32 msgrcv;
+	uval log_htab_bytes;
 };
 
 #define MAX_MANAGED_PARTITIONS 23

@@ -25,12 +25,17 @@
 #include <mmu.h>
 
 int
-start_partition(struct partition_status* ps, struct load_file_entry* lf,
+start_partition(struct partition_status *ps, struct load_file_entry *lf,
 		uval ofd)
 {
 	sval rc;
 	uval r5;
 	uval lofd = 0;
+
+	/* give the partition an htab */
+	ps->log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
+	rc = hcall_htab(NULL, ps->lpid, ps->log_htab_bytes);
+	assert(rc == H_Success, "hcall_htab() failed\n");
 
 #ifdef USE_OPENFIRMWARE
 	lofd = ofd_lpar_create(ps, lofd, ofd);

@@ -27,6 +27,7 @@
 #include <hcall.h>
 #include <sim.h>
 #include <objalloc.h>
+#include <bitops.h>
 
 extern ofdn_t ofd_xics_props(void *m);
 
@@ -369,14 +370,14 @@ ofd_options_props(void *m)
 }
 
 static ofdn_t
-ofd_cpus_props(void *m, uval32 lpid)
+ofd_cpus_props(void *m, struct partition_status *ps)
 {
 	static const char path[] = "/cpus";
 	static const char cpu[] = "cpu";
 	uval32 val = 1;
 	ofdn_t n;
 	ofdn_t c;
-	static uval32 ibm_pft_size[] = { 0x0, 0x14 };
+	static uval32 ibm_pft_size[] = { 0x0, 0x0 };
 
 	n = ofd_node_find(m, path);
 	if (n == 0) {
@@ -395,6 +396,7 @@ ofd_cpus_props(void *m, uval32 lpid)
 	c = ofd_node_find_by_prop(m, n, "device_type", cpu, sizeof (cpu));
 	//assert(c > 0, "can't get first processor\n");
 	while (c > 0) {
+		ibm_pft_size[1] = ps->log_htab_bytes;
 		ofd_prop_add(m, c, "ibm,pft-size",
 			     ibm_pft_size, sizeof (ibm_pft_size));
 
@@ -411,7 +413,7 @@ ofd_cpus_props(void *m, uval32 lpid)
 		/* FIXME: Check the the "l2-cache" property who's
 		 * contents is an orphaned phandle? */
 
-		ofd_per_proc_props(m, c, lpid);
+		ofd_per_proc_props(m, c, ps->lpid);
 		c = ofd_node_find_next(m, c);
 
 		/* Since we are not MP yet we can prune the rest of the CPUs */
@@ -425,7 +427,7 @@ ofd_cpus_props(void *m, uval32 lpid)
 		}
 	}
 
-	ofd_proc_props(m, lpid);
+	ofd_proc_props(m, ps->lpid);
 	return n;
 }
 
@@ -758,7 +760,7 @@ ofd_lpar_create(struct partition_status *ps, uval new, uval mem)
 	}
 
 	hputs("Add /cpus props\n");
-	ofd_cpus_props(m, ps->lpid);
+	ofd_cpus_props(m, ps);
 
 
 	if (iohost_lpid != ps->lpid) {
