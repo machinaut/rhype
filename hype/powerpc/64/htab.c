@@ -17,12 +17,6 @@
  *
  * $Id$
  */
-/*
- * XXX references to 'bolted' should go away. This 'bolted' bit is just a
- * software-use PTE bit which Linux uses to always keep the PTE in the HTAB.
- * The bit should not be hardcoded (other OS's may use a different bit to mean
- * the same thing).
- */
 
 #include <config.h>
 #include <asm.h>
@@ -30,177 +24,32 @@
 #include <lib.h>
 #include <htab.h>
 #include <h_proto.h>
-
 #include <hype.h>
 #include <os.h>
 #include <mmu.h>
 #include <pmm.h>
 #include <objalloc.h>
+#include <bitops.h>
+#include <debug.h>
 
-#ifdef HTAB_PER_CPU
-#define NUM_HTABS MAX_CPU * MAX_OS
-#else
-#define NUM_HTABS MAX_OS;
-#endif
-
-/* private functions */
-
-static inline uval
-HtabCalcSdr1(uval htab_addr, uval htab_log_size)
+static uval
+htab_calc_sdr1(uval htab_addr, uval log_htab_size)
 {
-	uval sdr1_htaborg;
 	uval sdr1_htabsize;
+	uval htab_size = 1UL << log_htab_size;
 
-	assert((htab_addr & ((1UL << htab_log_size) - 1)) == 0,
-	       "htab_addr is not aligned 0x%lx\n", htab_addr);
+	assert((htab_addr & (htab_size - 1)) == 0,
+	       "misaligned htab address (0x%lx)\n", htab_addr);
 
-	sdr1_htaborg = htab_addr;
+	assert(log_htab_size <= SDR1_HTABSIZE_MAX, "htab too big (0x%lx)",
+			htab_size);
 
-	assert(((sdr1_htaborg & ~SDR1_HTABORG_MASK) == 0UL),
-	       "sdr1_htaborg: 0x%lx extra bits\n", sdr1_htaborg);
+	assert(log_htab_size >= HTAB_MIN_LOG_SIZE, "htab too small (0x%lx)",
+			htab_size);
 
-	assert((htab_log_size >= SDR1_HTABSIZE_BASE),
-	       "htab_log_size(%ld) < SDR1_HTABSIZE_BASE(%d)\n",
-	       htab_log_size, SDR1_HTABSIZE_BASE);
+	sdr1_htabsize = log_htab_size - LOG_PTEG_SIZE - SDR1_HTABSIZE_BASEBITS;
 
-	/* log number of PTEGS */
-	sdr1_htabsize = htab_log_size - LOG_PTEG_SIZE;
-	/* subtract the minumum assumed value */
-	sdr1_htabsize -= SDR1_HTABSIZE_BASE;
-
-	assert((sdr1_htabsize <= SDR1_HTABSIZE_MAX),
-	       "sdr1_htabsize: %ld too big\n", sdr1_htabsize);
-
-	return (sdr1_htaborg | sdr1_htabsize);
-}
-
-static uval64
-stegIndex(uval64 eaddr)
-{
-	/* select 5 low-order bits from ESID part of EA */
-	return ((eaddr >> 28) & 0x1F);
-}
-
-static uval64
-ptegIndex(uval64 vaddr, uval64 vsid)
-{
-	uval64 hash;
-
-	hash = (vsid & VSID_HASH_MASK) ^
-		((vaddr & EA_HASH_MASK) >> EA_HASH_SHIFT);
-
-	return (hash & HTAB_HASH_MASK);
-}
-
-/* make_ste()
- * Calculate ESID and VSID from eaddr.
- * If not present, create a new STE and enter it into the segment table.
- * Return VSID (for use in PTE).
- *
- *	eaddr - effective address being mapped
- */
-static uval64 make_ste(struct steg *stab, uval64 eaddr)
-	__attribute__ ((unused));
-static uval64
-make_ste(struct steg *stab, uval64 eaddr)
-{
-	struct steg *stegPtr;
-	struct ste *stePtr = 0;
-	uval64 vsid;
-	uval64 esid;
-	int segment_mapped = 0;
-	uval i;
-
-	/*
-	 * Kernel effective addresses have the high-order bit on, thus a
-	 * kernel ESID will be something like 0x80000000C (36 bits).
-	 * The 52-bit VSID for a kernel address is formed by prepending
-	 * 0x7FFF to the top of the ESID, thus 0x7FFF80000000C.
-	 */
-	esid = (eaddr >> 28) & 0xFFFFFFFFFULL;
-	/* FIXME: what hack is this! */
-	if (esid == 0xc00000000)
-		vsid = 0x06a99b4b14;
-	else
-		vsid = esid | 0x7FFF000000000ULL;
-
-	/*
-	 * Make an entry in the segment table to map the ESID to VSID,
-	 * it it's not already present.
-	 */
-	stegPtr = &stab[stegIndex(eaddr)];
-
-	for (i = 0; i < NUM_STES_IN_STEG; i++) {
-		stePtr = &stegPtr->entry[i];
-		if (STE_PTR_V_GET(stePtr) &&	/* entry valid, and */
-		    STE_PTR_VSID_GET(stePtr) == vsid) {
-			/* vsid matches */
-			segment_mapped = 1;
-			break;
-		}
-		if (!STE_PTR_V_GET(stePtr))	/* entry not yet used */
-			break;
-	}
-	if (!segment_mapped) {
-#ifdef DEBUG
-		hprintf("Creating STE for 0x%llx\n"
-			"  esid = 0x%llx\n"
-			"  vsid = 0x%llx\n", eaddr, esid, vsid);
-#endif
-		assert(i < NUM_STES_IN_STEG,
-		       "Boot-time segment table overflowed %ld\n", i);
-
-		/*
-		 * Create segment table entry in stegPtr->entry[i].
-		 * We don't need to be careful about the order in
-		 * which we do this, as address translation hasn't
-		 * been turned on yet.
-		 */
-		STE_PTR_CLEAR(stePtr);
-		STE_PTR_ESID_SET(stePtr, esid);
-		STE_PTR_VSID_SET(stePtr, vsid);
-		STE_PTR_V_SET(stePtr, 1);
-	}
-
-	return vsid;
-}
-
-/* find_pte()
- * locate an empty PTE in the appropriate PTEG
- * return PTE index (relative to HTAB, not this PTEG)
- *
- *	htab - pointer to CPU's hardware pagetable
- *	eaddr - effective address being mapped
- *	vsid - vsid from the approprite STE
- */
-static uval64 find_pte(struct pteg *htab, uval64 eaddr, uval64 vsid)
-	__attribute__ ((unused));
-
-static uval64
-find_pte(struct pteg *htab, uval64 eaddr, uval64 vsid)
-{
-	struct pteg *ptegPtr;
-	union pte *ptePtr;
-	uval pteIndex = (uval)-1;
-	int i;
-
-	/*
-	 * Make a page table entry
-	 */
-	ptegPtr = &htab[ptegIndex(eaddr, vsid)];
-
-	for (i = 0; i < NUM_PTES_IN_PTEG; i++) {
-		ptePtr = &ptegPtr->entry[i];
-		if (ptePtr->bits.v == 0) {
-			pteIndex = NUM_PTES_IN_PTEG * ptegIndex(eaddr, vsid);
-			pteIndex += i;
-			break;
-		}
-	}
-	assert(i < NUM_PTES_IN_PTEG,
-	       "Boot-time page table overflowed %d\n", i);
-
-	return pteIndex;
+	return (htab_addr | (sdr1_htabsize & SDR1_HTABSIZE_MASK));
 }
 
 /* pte_insert: called by h_enter
@@ -249,39 +98,35 @@ pte_insert(struct logical_htab *pt, uval ptex, const uval64 vsidWord,
  * - set cpu's SDR1 register
  */
 void
-htab_alloc(struct os *os)
+htab_alloc(struct os *os, uval log_htab_bytes)
 {
 	uval sdr1_val = 0;
-	htab_t *ht;
-	uval ht_ra = get_pages_aligned(&phys_pa,
-				       1 << LOG_HTAB_BYTES, LOG_HTAB_BYTES);
+	uval htab_raddr;
+	uval htab_bytes = 1UL << log_htab_bytes;
 	int i;
 
-	assert(ht_ra != INVALID_PHYSICAL_PAGE, "htab allocation failure\n");
+	htab_raddr = get_pages_aligned(&phys_pa, htab_bytes, log_htab_bytes);
+	assert(htab_raddr != INVALID_PHYSICAL_PAGE, "htab allocation failure\n");
 
-	ht = (htab_t *)ht_ra;
+	/* hack.. should make this delta global */
+	htab_raddr += get_hrmor();
 
-	/* hack.. should make the hv_ra delta global */
-	ht_ra += get_hrmor();
+	/* XXX slow. move memset out to service partition? */
+	memset((void *)htab_raddr, 0, htab_bytes);
 
-	memset(ht, 0, sizeof (*ht));
+	sdr1_val = htab_calc_sdr1(htab_raddr, log_htab_bytes);
 
-	sdr1_val = HtabCalcSdr1(ht_ra, LOG_HTAB_BYTES);
-
-	os->htab.num_ptes = (1ULL << (LOG_HTAB_BYTES - LOG_PTE_SIZE));
+	os->htab.num_ptes = (1ULL << (log_htab_bytes - LOG_PTE_SIZE));
 	os->htab.sdr1 = sdr1_val;
 	os->htab.shadow = (uval *)halloc(os->htab.num_ptes * sizeof (uval));
-
 	assert(os->htab.shadow, "Can't allocate shadow table\n");
 
 	for (i = 0; i < os->installed_cpus; i++) {
 		os->cpu[i]->reg_sdr1 = sdr1_val;
 	}
 
-#ifdef DEBUG
-	hprintf("%s: allocated 0x%lx entry table to LPAR[0x%x] at %p\n",
-		__func__, os->htab.num_ptes, os->po_lpid, ht);
-#endif
+	DEBUG_OUT(DBG_MEMMGR, "LPAR[0x%x] hash table: RA 0x%lx; 0x%lx entries\n",
+		os->po_lpid, htab_raddr, os->htab.num_ptes);
 }
 
 void
@@ -300,7 +145,5 @@ htab_free(struct os *os)
 	if (os->htab.shadow)
 		hfree(os->htab.shadow, os->htab.num_ptes * sizeof (uval));
 
-#ifdef DEBUG
-	hprintf("HTAB: freed htab at 0x%lx\n", ht_ea);
-#endif
+	DEBUG_OUT(DBG_MEMMGR, "HTAB: freed htab at 0x%lx\n", ht_ea);
 }
