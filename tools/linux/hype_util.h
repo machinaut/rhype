@@ -24,7 +24,7 @@
 #define HYPE_UTIL_H
 
 #include <hype_types.h>
-#ifdef UVAL_IS_LL
+#ifdef UVAL_IS_64
 #define UVAL_CHOOSE(x32, x64) x64
 #else
 #define UVAL_CHOOSE(x32, x64) x32
