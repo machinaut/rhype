@@ -14,15 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- $Id$
  *
- * Hypervisor support information.  This file was created using IBM
- * confidential information from Chapter 18 of the RS/6000 Platform
- * Architecture: June 19, 2001.
- *
- * Depending on the ditribution, this section of the document may or
- * may not be available with the source.
- *
+ * $Id$
  */
 
 #ifndef _LPAR_H
