@@ -360,6 +360,9 @@ hype_init(uval r3, uval r4, uval r5, uval r6, uval r7, uval orig_msr)
 	}
 	arch_os_init(ctrl_os, pinfo);
 
+	/* create a known-size htab for controller */
+	htab_alloc(ctrl_os, LOG_DEFAULT_HTAB_BYTES);
+
 	/*
 	 * This is an H_START hcall() initiated "under the covers".
 	 * There have been a bunch of implicit H_RESOURCE_TRANSFER
