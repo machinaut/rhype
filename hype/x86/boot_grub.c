@@ -24,6 +24,7 @@
 #include <lib.h>
 #include <pmm.h>
 #include <vm.h>
+#include <thinwire.h>
 
 static struct memblock mem;
 
