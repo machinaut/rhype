@@ -156,7 +156,6 @@ void
 arch_os_destroy(struct os *os)
 {
 	lpidtag_release(os);
-	crq_os_release_all(os);
 }
 
 /* Set current thread to resume at exception vector by setting the
