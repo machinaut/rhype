@@ -125,6 +125,7 @@ AC_SUBST(AS_WARN)
 AC_SUBST(LD_WARN)
 
 dnl lboot
+AC_SUBST(LBOOT)
 AC_SUBST(LBOOT_VMLINUX)
 AC_SUBST(LBOOT_INITRD)
 
@@ -527,6 +528,39 @@ for f in $EXTERNAL_IMAGES; do
   fi
 done
 
+dnl check for lboot stuff
+AC_MSG_CHECKING(lboot vmlinux location)
+AC_ARG_WITH(lboot-vmlinux,
+  [  --with-lboot-vmlinux=FILE  Location of vmlinux to wrap lboot around.],
+  [LBOOT_VMLINUX="$withval"],
+  [LBOOT_VMLINUX="none"])
+
+AC_MSG_RESULT($LBOOT_VMLINUX)
+
+if test "$LBOOT_VMLINUX" != "none"; then
+  if test ! -r "$LBOOT_VMLINUX"; then
+	AC_MSG_ERROR(lboot vmlinux: $LBOOT_VMLINUX)
+  fi
+
+  AC_MSG_CHECKING(lboot initrd location)
+  AC_ARG_WITH(lboot-initrd,
+  [  --with-lboot-initrd=FILE  Location of initrd lboot package with vmlinux.],
+  [LBOOT_INITRD="$withval"],
+  [LBOOT_INITRD="none"])
+
+  AC_MSG_RESULT($LBOOT_INITRD)
+
+  if test "$LBOOT_INITRD" != "none" -a ! -r "$LBOOT_INITRD"; then
+	AC_MSG_ERROR(lboot initrd: $LBOOT_INITRD)
+  fi
+
+# force lboot at the head
+  EXTERNAL_IMAGES="\$(top_builddir)/lboot/lboot.boot ${EXTERNAL_IMAGES}"
+  LBOOT=lboot	
+  opt_outputs="${opt_outputs} lboot/Makefile"
+	
+fi
+
 dnl Check for '--enable-debug'
 AC_MSG_CHECKING(whether to turn on debugging)
 AC_ARG_ENABLE(debug,
@@ -566,8 +600,8 @@ FINLINE_LIMIT="-finline-limit=1000"
 for T in HOST BUILD; do 
   lcase=`echo ${T} | tr A-Z a-z`
   AC_MSG_CHECKING(whether the ${lcase} gcc needs ${FINLINE_LIMIT})
-  prefix=`eval echo \$\{${T}_TOOLS_PREFIX\}`
-  gccver=`${prefix}gcc --version | head -n 1`
+  tool_prefix=`eval echo \$\{${T}_TOOLS_PREFIX\}`
+  gccver=`${tool_prefix}gcc --version | head -n 1`
   case "$gccver" in
     *\ 3.3.2\ *|*\ 3.3.4\ *|*\ 3.3.5\ *)
       prev_copts=`eval echo \$\{${T}_COPTFLAGS\}`
