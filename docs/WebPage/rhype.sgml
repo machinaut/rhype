@@ -11,7 +11,7 @@
 
 <!-- CVS gives us these -->
 <!ENTITY release "$Id$">
-<!ENTITY proj	"rHype">
+<!ENTITY proj	"Research Hypervisor">
 
 <!-- URLs handy for this document -->
 <!ENTITY watson.url	"http://www.watson.ibm.com">
@@ -49,9 +49,51 @@
     </copyright>
   </artheader>
   <section>
+    <title>News</title>
+    <para>
+      We'll be trying to keep this up to date as much as possible.
+    </para>
+    <section>
+      <title>
+	Tue Mar 8 14:21:30 EST 2005
+      </title>
+      <para>
+	Linux patch finally released. It is a single diff that
+	represets three distinct pieces of work.
+	<orderedlist>
+	  <listitem>
+	    <para>
+	      The Linux x86 patch.
+	    </para>
+	  </listitem>
+	  <listitem>
+	    <para>
+	      Commonized VIO layer, where the PPC64 VIO layer is
+	      "fixed" so it can target x86 as well.
+	    </para>
+	  </listitem>
+	  <listitem>
+	    <para>
+	      Teach the MAPLE PPC64 configureation to be hypervisor aware.
+	    </para>
+	  </listitem>
+	</orderedlist>
+      </para>
+    </section>
+    <section>
+      <title>
+	Tue Mar 1 09:25:22 EST 2005
+      </title>
+      <para>
+	Mailing lists have been added, information <link
+	linkend="mailing.lists">below</link>.
+      </para>
+    </section>
+  </section>
+  <section>
     <title>Introduction</title>
     <para>
-      The Research Hypervisor (rHype) from IBM research has been
+      The Research Hypervisor from IBM research has been
       developed over the last 3 years to validate virtualization
       features in new hardware architectures and to study fundamental
       research issues in virtualization. For example, the Research
@@ -121,8 +163,8 @@
       x86 is Leendert Van Doorn.
     </para>
     <para>
-      On PowerPC rHype can run unmodified Linux distributions. Also,
-      on Power we support the <ulink
+      On PowerPC the Research Hypervisor can run unmodified Linux
+      distributions. Also, on Power we support the <ulink
       url="www.research.ibm.com/k42">K42</ulink> operating system
       kernel, and a library OS that we have been developing for High
       Performance Computing applications. On Intel we support a
@@ -201,36 +243,62 @@
     <section>
       <title>Other Resources</title>
       <para>
-	<orderedlist>
-	  <listitem>
-	    <formalpara>
-	      <title>Mailing List</title>
-	      <para>
-		Coming soon.
-	      </para>
-	    </formalpara>
-	  </listitem>
-	  <listitem>
-	    <formalpara>
-	      <title>Hacker's Guide</title>
-	      <para>
-		Can be build like all other documentation. A recent
-		snap shot is <ulink url="HackersGuide.shtml">here
-		(HackersGuide)</ulink> for your amusement.
-	      </para>
-	    </formalpara>
-	  </listitem>
-	  <listitem>
-	    <formalpara>
-	      <title>IRC</title>
-	      <para>
-		Channel #rhype on irc.freenode.net or <ulink
-		url="irc://irc.freenode.net/%23rhype">irc://irc.freenode.net/#rhype</ulink>
-	      </para>
-	    </formalpara>
-	  </listitem>
-	</orderedlist>
+	Contacts, docs and other tasty morsels.
       </para>
+      <section id="mailing.lists">
+	<title>Mailing List</title>
+	<para>
+	  Thanks to our friends at <ulink
+	    url="http://ozlabs.org/">OzLabs</ulink> we now have
+	  some mailing lists.
+	  <itemizedlist>
+	    <listitem>
+	      <formalpara>
+		<title>Discussion List</title>
+		<para>
+		  <ulink url="mailto:rhype@ozlabs.org">
+		    rhype@ozlabs.org
+		  </ulink>
+		  sign up at 
+		  <ulink url="http://ozlabs.org/mailman/listinfo/rhype">
+		    rhype Info Page
+		  </ulink>.
+		</para>
+	      </formalpara>
+	    </listitem>
+	    <listitem>
+	      <formalpara>
+		<title>CVS Commits</title>
+		<para>
+		  <ulink url="mailto:rhype@ozlabs.org">
+		    rhype-cvs@ozlabs.org
+		  </ulink>
+		  sign up at 
+		  <ulink
+		    url="http://ozlabs.org/mailman/listinfo/rhype-cvs">
+		    rhype-cvs Info Page
+		  </ulink>.
+		</para>
+	      </formalpara>
+	    </listitem>
+	  </itemizedlist>
+	</para>
+      </section>
+      <section>
+	<title>Hacker's Guide</title>
+	<para>
+	  Can be build like all other documentation. A recent snap
+	  shot is <ulink url="HackersGuide.shtml">here
+	  (HackersGuide)</ulink> for your amusement.
+	</para>
+      </section>
+      <section>
+	<title>IRC</title>
+	<para>
+	  Channel #rhype on irc.freenode.net or <ulink
+	  url="irc://irc.freenode.net/%23rhype">irc://irc.freenode.net/#rhype</ulink>
+	</para>
+      </section>
     </section>
   </section>
 </article>
@@ -244,5 +312,5 @@ End:
 -->
 <!--
   LocalWords:
- -->
+ -->  
 
