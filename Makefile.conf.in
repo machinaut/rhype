@@ -309,7 +309,7 @@ endef
 	$(make-dependencies.s)
 
 %: %.o
-	$($(CUR_TOOL)_LINK.o) $< $($(CUR_TOOL)_LDLIBS) -o $@
+	$($(CUR_TOOL)_LINK.o) $^ $($(CUR_TOOL)_LDLIBS) -o $@
 
 .PHONY: $(SUBDIRS)
 all: $(SUBDIRS:%=%-all)
