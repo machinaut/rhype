@@ -10,7 +10,7 @@
 <!ENTITY % review "INCLUDE" >
 
 <!-- CVS gives us these -->
-<!ENTITY release "$Header$">
+<!ENTITY release "$Id$">
 
 <!-- The actual meat of the Overview -->
 <!-- URLs handy for this document -->
