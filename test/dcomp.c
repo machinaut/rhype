@@ -61,11 +61,11 @@ bz_internal_error(int errcode)
 	assert(0, "libbz2 error: %d\n", errcode);
 }
 
-extern void* malloc(uval a, uval b, uval c);
+extern void* malloc(uval a);
 void*
-malloc(uval a, uval b, uval c)
+malloc(uval a)
 {
-	assert(0, "malloc called: %lx %lx %lx\n", a, b, c);
+	assert(0, "malloc called: %lx\n", a);
 	return NULL;
 }
 
