@@ -1,3 +1,6 @@
+#
+# $Id$
+#
 
 Installing the Research Hypervisor
 ====================================
@@ -61,7 +64,7 @@ only image the Hypervisor is capable of starting all by itself.
     it is possible to arrange for that boot loader to also load
     controller into memory and inform hypervisor where it is located.
 
-  --with-controller=FILE  OS that gets loaded by hypervisor.
+  --with-controlling-os=FILE  OS that gets loaded by hypervisor.
 
     In the case of simpler boot loader, we need to embed/link the
     controller image _in_ the hypervisor image, this allows you to
