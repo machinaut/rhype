@@ -57,7 +57,7 @@ ac_help="$ac_help
 			  These are very platform specific, 
                             if you are not sure use "default"."
 ac_help="$ac_help
-  --with-log_chunksize=<num>
+  --with-log-chunksize=<num>
                           Size of memory chunk size (default: 26 or 64M)"
 ac_help="$ac_help
   --with-eic=<External Interrupt Controller>
@@ -1535,7 +1535,7 @@ fi
 
 echo $ac_n "checking log2 of memory chunk size""... $ac_c" 1>&6
 echo "configure:1538: checking log2 of memory chunk size" >&5
-# Check whether --with-log_chunksize or --without-log_chunksize was given.
+# Check whether --with-log-chunksize or --without-log-chunksize was given.
 if test "${with_log_chunksize+set}" = set; then
   withval="$with_log_chunksize"
   log_chunksize="$withval"

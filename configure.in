@@ -245,8 +245,8 @@ AC_ARG_WITH(hba,
 
 dnl Check for '--with-log-chunksize'
 AC_MSG_CHECKING(log2 of memory chunk size)
-AC_ARG_WITH(log_chunksize,
-  [  --with-log_chunksize=<num>
+AC_ARG_WITH(log-chunksize,
+  [  --with-log-chunksize=<num>
                           Size of memory chunk size (default: 26 or 64M)],
   [log_chunksize="$withval"],
   [log_chunksize="26"])
