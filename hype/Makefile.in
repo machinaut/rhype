@@ -22,6 +22,7 @@ top_srcdir = @top_srcdir@
 srcdir = @srcdir@
 VPATH = @srcdir@/@ISA@/@CPU_GRP@/@CPU_CORE@:@srcdir@/@ISA@/@CPU_GRP@:@srcdir@/@ISA@:@srcdir@
 top_builddir = ..
+top_subdir = @TOP_SUBDIR@
 
 
 TARGETS = hype controller.bin
@@ -126,11 +127,11 @@ CUR_TOOL=HOST
 HOST_CPPDEFS += -DLTEXT=$(LTEXT)
 HOST_LIBS = $(HOST_PRE_LIBS) -lhype -lgcc
 
-ifneq (@TOP_SUBDIR@,)
+ifneq ($(top_subdir),)
 # yeah, I hate if's but this path is resolvable by accident
-include $(top_srcdir)/@TOP_SUBDIR@/hype/Makefile.isa
+include $(top_srcdir)/$(top_subdir)/hype/Makefile.isa
 endif
--include @srcdir@/$(ISA)/Makefile.isa # add to OBJECTS
+-include $(srcdir)/$(ISA)/Makefile.isa # add to OBJECTS
 
 
 IO_XLATE= @IO_XLATE@
