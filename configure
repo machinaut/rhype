@@ -2032,7 +2032,7 @@ echo "configure:2032: checking whether the ${lcase} gcc needs ${FINLINE_LIMIT}" 
   prefix=`eval echo \$\{${T}_TOOLS_PREFIX\}`
   gccver=`${prefix}gcc --version | head -n 1`
   case "$gccver" in
-    *\ 3.3.2\ *|*\ 3.3.5\ *)
+    *\ 3.3.2\ *|*\ 3.3.4\ *|*\ 3.3.5\ *)
       prev_copts=`eval echo \$\{${T}_COPTFLAGS\}`
       eval ${T}_COPTFLAGS="\"${prev_copts} ${FINLINE_LIMIT}\""
       echo "$ac_t""yes" 1>&6
