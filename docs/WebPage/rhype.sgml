@@ -1,0 +1,247 @@
+<!--
+  (C) Copyright IBM Corp. 2001.
+  All Rights Reserved
+
+  $Id$
+-->
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook V3.1//EN" [
+
+<!-- To disable review comments replace INCLUDE with IGNORE -->
+<!ENTITY % review "INCLUDE" >
+
+<!-- CVS gives us these -->
+<!ENTITY release "$Id$">
+<!ENTITY proj	"rHype">
+
+<!-- URLs handy for this document -->
+<!ENTITY watson.url	"http://www.watson.ibm.com">
+]>
+
+
+<!--
+    In DocBook terms, a white paper is and article.
+-->
+<article status="draft" lang="en">
+  <artheader>
+    <title>The Research Hypervisor</title>
+    <subtitle>A Multi-Platform, Multi-Purpose Research Hypervisor</subtitle>
+    <author>
+      <firstname>&proj;</firstname>
+      <surname>Team</surname>
+      <affiliation>
+	<orgname>
+	  <ulink url="http://www.research.ibm.com">
+	    <trademark class="registered">IBM</trademark> </ulink>
+	</orgname>
+	<orgdiv>
+	  <ulink url="&watson.url;"> TJ Watson Research Center
+	  </ulink>
+	</orgdiv>
+      </affiliation>
+    </author>
+
+    <releaseinfo>
+      &release;
+    </releaseinfo>
+    <copyright>
+      <year>2005</year>
+      <holder>IBM Corp.</holder>
+    </copyright>
+  </artheader>
+  <section>
+    <title>Introduction</title>
+    <para>
+      The Research Hypervisor (rHype) from IBM research has been
+      developed over the last 3 years to validate virtualization
+      features in new hardware architectures and to study fundamental
+      research issues in virtualization. For example, the Research
+      Hypervisor has been used:
+      <itemizedlist>
+	<listitem>
+	  <para>
+	    to validate features developed for new processors like the
+	    <ulink
+		   url="http://www-03.ibm.com/chips/news/2004/1129_cell1.html">Cell</ulink>
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    to study future architecture ideas and functions for the
+	    high performance computing community within the <ulink
+	    url="http://domino.research.ibm.com/comm/pr.nsf/pages/news.20030710_darpa.html">PERCS</ulink>
+	    project for DARPA
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    to study security in the context of virtualization within
+	    the <ulink
+	    url="http://www.research.ibm.com/secure_systems_department/projects/hypervisor/">sHype</ulink>
+	    project.
+	  </para>
+	</listitem>
+      </itemizedlist>
+    </para>
+    <para>
+      The Research Hypervisor was designed from the start to be
+      multi-platform, and today supports both the Power and x86
+      architectures. On Power, it conforms to the PAPR interfaces used
+      by Linux running on IBM's commercial POWER Hypervisor in the new
+      <ulink
+      url="http://www-1.ibm.com/servers/eserver/pseries/hardware/pseries_family.html">POWER5-based
+      servers</ulink>, and hence runs unmodified Linux
+      distributions. On Intel we support a modified Linux kernel and
+      demonstrate the multi-platform characteristics of the PAPR
+      interfaces.
+    </para>
+  </section>
+  <section>
+    <title>Maintainers</title>
+    <para>
+      Core architects of the project are:
+      <simplelist>
+	<member>
+	  <quote>Jimi Xenidis</quote>
+	  <email>jimix@watson.ibm.com</email>.
+	</member>
+	<member>
+	  <quote>Leendert Van Doorn</quote>
+	  <email>leendert@watson.ibm.com</email>.
+	</member>
+	<member>
+	  <quote>Michal Ostrowski</quote>
+	  <email>mostrows@watson.ibm.com</email>.
+	</member>
+	<member>
+	  <quote>Orran Krieger</quote>
+	  <email>okrieg@us.ibm.com</email>.
+	</member>
+      </simplelist>
+      The overall maintainer is Jimi Xenidis, and the maintainer for
+      x86 is Leendert Van Doorn.
+    </para>
+    <para>
+      On PowerPC rHype can run unmodified Linux distrubutions. Also,
+      on Power we support the <ulink
+      url="www.research.ibm.com/k42">K42</ulink> operating system
+      kernel, and a libary OS that we have been developing for High
+      Performance Computing applications. On Intel we support a
+      modified Linux kernel.
+    </para>
+  </section>
+  <section>
+    <title>Key features</title>
+    <para>
+      <simplelist>
+	<member>
+	  From-scratch implementation and design decisions that allow
+	  the core trusted code base to be tiny making it appropriate
+	  for secure design.
+	</member>
+	<member>
+	  Memory management architecture designed to enable large
+	  pages, to be cache efficient on common operations and
+	  friendly to future self virtualizing I/O devices.
+	</member>
+	<member>
+	  Source configuration system and careful choice of internal
+	  interfaces to allow implementation to be tuned to specific
+	  platform requirements and supported services, and maximizes
+	  code reuse/sharing between platforms.
+	</member>
+	<member>
+	  On Intel, design decisions that result in a small set of
+	  changes to Linux.
+	</member>
+	<member>
+	  A reduced and open source implementation of the proven LPAR
+	  environment used in IBM's commercial hypervisors; unmodified
+	  distributions are supported. Interfaces are designed with
+	  SMP/SMT clients from the beginning.
+	</member>
+      </simplelist>
+    </para>
+  </section>
+  <section>
+    <title>Playing with the Research Hypervisor</title>
+    <para>
+      Unfortunately we are unable to accept patches at this time, we
+      do wish to make our source available for discussion and use by
+      a larger group.
+    </para>
+    <section>
+      <title>Using the CVS Repository</title>
+      <para>
+	Set CVSROOT in your environment to
+	<envar>
+	  :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
+	</envar>.
+	Alternately add
+	<optional>
+	  -d :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
+	</optional> in the CVS commands below (place it immediately
+	after <command>cvs</command>, before any other arguments).
+      </para>
+      <para>
+	Issue the command <command>cvs login</command>.  You will be
+	prompted for a password; reply with the empty string.
+      </para>
+
+      <para>
+	Issue the command <command>cvs -z 6 co rhype</command>
+      </para>
+      <para>
+	Once you've got the repository checked out, <command>cvs
+	update</command> will sync your local copy with the
+	repository. See the CVS manual for additional information on
+	how to use CVS.
+      </para>
+    </section>
+    <section>
+      <title>Other Resources</title>
+      <para>
+	<orderedlist>
+	  <listitem>
+	    <formalpara>
+	      <title>Mailing List.</title>
+	      <para>
+		Comming soon.
+	      </para>
+	    </formalpara>
+	  </listitem>
+	  <listitem>
+	    <formalpara>
+	      <title>Hacker's Guide.</title>
+	      <para>
+		Can be build like all other documentation, a recent
+		snap shot is <ulink url="HackersGuide.shtml">here
+		(HackersGuide)</ulink> for your amusement.
+	      </para>
+	    </formalpara>
+	  </listitem>
+	  <listitem>
+	    <formalpara>
+	      <title>IRC</title>
+	      <para>
+		Channel #rhype on irc.freenode.net or <ulink
+		url="irc://irc.freenode.net/%23rhype">irc://irc.freenode.net/#rhype</ulink>
+	      </para>
+	    </formalpara>
+	  </listitem>
+	</orderedlist>
+      </para>
+    </section>
+  </section>
+</article>
+
+<!--
+Local Variables:
+sgml-validate-command: "nsgmls -s %s %s"
+sgml-indent-data: t
+sgml-insert-missing-element-comment: t
+End:
+-->
+<!--
+  LocalWords:
+ -->
+

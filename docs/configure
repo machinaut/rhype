@@ -805,6 +805,7 @@ esac
 all_outputs="
 Makefile
 Makefile.conf
+WebPage/Makefile
 WhitePapers/Makefile
 WhitePapers/HackersGuide/Makefile
 WhitePapers/Overview/Makefile
