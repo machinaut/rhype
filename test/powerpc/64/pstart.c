@@ -62,6 +62,7 @@ restart_partition(struct partition_status* ps, struct load_file_entry* lf,
 	uval entry;
 	uval lofd = 0;
 
+	/* this is the size htab controller was already implicitly given */
 	ps->log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
 
 #ifdef USE_OPENFIRMWARE
