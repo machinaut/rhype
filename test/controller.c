@@ -72,7 +72,7 @@ get_input(char *buf)
 
 	do {
 		yield(1);
-		rc = hcall_get_term_char(ret_vals, 0);
+		rc = hcall_get_term_char(ret_vals, CONSOLE_CHANNEL);
 		assert(rc == H_Success, "hcall_get_term_char: failed\n");
 		vterm_service(partitions, MAX_MANAGED_PARTITIONS);
 	} while (ret_vals[0] == 0);
