@@ -18,37 +18,19 @@
 # $Id$
 #
 
-LTEXT=0x100000
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+VPATH = @srcdir@/@ISA@/@CPU_GRP@:@srcdir@/@ISA@:@srcdir@
 
-ISA_HEAD_OBJECTS = idt.o exceptions.o
+top_builddir = ..
 
-TARGETS=	yield		\
-		ipcmon
+VMLINUX=@LBOOT_VMLINUX@
+INITRD=@LBOOT_INITRD@
 
-OTHER_TARGETS=	termIO		\
-		henter		\
-		hcow		\
-		hintr		\
-		busyloop	\
-		fpu		\
-		print		\
-		check_time	\
-		time_intr	\
-		time_intr_yield
+TARGETS = lboot.bin
 
-hintr: COMMON_OBJECTS += timer_handler.o
-hintr: timer_handler.o
+all: $(TARGETS)
 
-time_intr time_intr_yield: COMMON_OBJECTS += time_intr_common.o timer_handler.o
-time_intr time_intr_yield: time_intr_common.o timer_handler.o
+CUR_TOOL=HOST
 
-hcow: COMMON_OBJECTS += hcow_handler.o
-hcow: hcow_handler.o
-
-HOST_PRE_CPPDIRS += -I.
-
-ifeq ($(ENABLE_GDB), yes)
-COMMON_OBJECTS += gdb_handler.o
-endif
-
-CONTROLLER_OBJECTS += prom.o
+include $(srcdir)/@ISA@/@CPU_GRP@/Makefile.isa
