@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -45,6 +45,7 @@ hypervisorInit(int on_hardware)
 
 		serial = uartNS16750_init(UART0Effective, 1, baudrate);
 #ifdef USE_THINWIRE_IO		/* thinwire serial IO */
+		serial_init_fn = uartNS16750_init;
 		thinwireInit(serial);
 		bprintInit(&thinwireMux, 1);
 		h_term_init(&thinwireMux, 4);
@@ -55,6 +56,7 @@ hypervisorInit(int on_hardware)
 #endif
 
 	} else {
+		serial_init_fn = uartNS16750_init;
 		serial = uartNS16750_init(UART0Effective, 0, baudrate);
 
 		console = interleaveInit(serial);
