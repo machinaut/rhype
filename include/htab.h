@@ -14,12 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- $Id$
  *
- *
- * Description: structures, macros, and constants specific to ppc64 hardware
- *              pagetable support.
- *              XXX will eventually need ppc32 support (another file?)
+ * $Id$
  */
 #ifndef _HYP_HTAB_H
 #define _HYP_HTAB_H
