@@ -104,17 +104,15 @@ AC_ARG_WITH(platform,
 
 AC_MSG_RESULT(${PLATFORM})
 
-case "${PLATFORM}" in
-  sti)
-	if test -r ${srcdir}/../stidc/docs/configure.frag; then
-	  . ${srcdir}/../stidc/docs/configure.frag
-	  opt_outputs="${opt_outputs} ${stidc_outputs}"
-	fi
-	;;
-  *)
-	;;
-esac
+# run any platform specific scripts
 
+platform_script=`echo "${PLATFORM}" | sed -e 's/ppc64-//'`
+platform_script=`echo "${platform_script}" | sed -e 's/-.*//'`
+pscript=${srcdir}/../${platform_script}/docs/configure.frag
+if test -r "${pscript}"; then
+  . ${pscript}
+  opt_outputs="${opt_outputs} ${pscript_outputs}"
+fi
 
 all_outputs="
 Makefile
