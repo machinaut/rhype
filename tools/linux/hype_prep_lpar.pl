@@ -40,6 +40,7 @@ use Cwd 'fast_abs_path';
 use lib "$libdir/perl";
 use HypeConst;
 use HypeUtil;
+use POSIX qw(uname);
 
 Getopt::Long::Configure qw(no_ignore_case);
 
@@ -56,6 +57,7 @@ my $membottom = 0;
 my $memtop = CHUNK_SIZE;
 my $help = 0;
 my $man = 0;
+my $processor = (uname)[4];
 GetOptions("i|image=s" => \$kernel,
 	   "r|ramdisk=s" => \$ramdisk,
 	   "h|help" => \$help,
@@ -128,7 +130,10 @@ if(defined $create){
   if(! -d "$vroot/$pname/of_tree") {
     run_command("cp -r $oftree $vroot/$pname/of_tree");
   }
-  run_command("objcopy --output-target=binary $ofstub $vroot/$pname/of_image");
+  
+  if ($processor eq "ppc64") {
+    run_command("objcopy --output-target=binary $ofstub $vroot/$pname/of_image");
+  }
 
   set_file("of_tree/ibm,partition-name", $pname);
   set_file("state", "READY");

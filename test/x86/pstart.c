@@ -189,7 +189,7 @@ restart_partition(struct partition_status* ps, struct load_file_entry* lf,
 	if (OS_LINK_BASE != lf->va_entry) {
 		uval addr;
 		uval esp;
-		void (*reloc)(struct run_info *ri, uval);
+		void (*reloc)(struct run_info *ri);
 		struct run_info ri;
 		uval new_ri;
 		uval numchunks;
@@ -214,7 +214,7 @@ restart_partition(struct partition_status* ps, struct load_file_entry* lf,
 
 		if (*(uval64 *)magic == HYPE_PARTITION_INFO_MAGIC_NUMBER) {
 			uval offset = lf->va_entry - OS_LINK_BASE;
-			uval partinfo = *((uval*)(magic + 8));
+			uval partinfo = *((uval*)(magic + sizeof(uval64)));
 
 			ri.chunks[numchunks].from = partinfo + offset;
 			ri.chunks[numchunks].to   = partinfo;
@@ -265,7 +265,7 @@ restart_partition(struct partition_status* ps, struct load_file_entry* lf,
 	} else {
 		asm volatile ("movl %1, %%esi\n\t"
 		              "movl %0, %%eax\n\t"
-		              "jmp *%%eax\n\t"
+		              "call *%%eax\n\t"
 		              :
 		              : "r" (lf->va_entry),
 		                "r" (esi)

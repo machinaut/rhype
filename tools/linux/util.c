@@ -89,7 +89,7 @@ mem_hold(uval size)
 
 
 int
-parse_laddr(const char* arg, uval64 *base, uval64 *size)
+parse_laddr(const char* arg, uval *base, uval *size)
 {
 	char *y;
 	uval64 b = strtoull(arg, &y, 0);

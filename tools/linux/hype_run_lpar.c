@@ -20,6 +20,12 @@
 
 #include <hype.h>
 #include <hype_util.h>
+#include <util.h>
+#include <partition.h>
+#include <hypervisor.h>
+#ifdef __i386__
+#include <x86/os_args.h>
+#endif
 
 #include <limits.h>
 
@@ -59,8 +65,8 @@ static int wait_for_key;
 static uval console_ua = 0;
 
 struct laddr_range {
-	uval64 lr_base;
-	uval64 lr_size;
+	uval lr_base;
+	uval lr_size;
 };
 
 struct laddr_range lranges[16] = { {0, 0}, };
@@ -99,7 +105,7 @@ bailout(const char *msg, ...)
 }
 
 static int
-laddr_load(char *file, uval64 laddr)
+laddr_load(char *file, uval64 laddr, uval *base)
 {
 	uval64 chunk = ALIGN_DOWN(laddr, CHUNK_SIZE);
 	uval64 offset = laddr - chunk;
@@ -124,6 +130,8 @@ laddr_load(char *file, uval64 laddr)
 
 	} while (ret > 0);
 	msg("Loaded to 0x%llx[0x%x] %s\n", laddr, size, file);
+	
+	*base = (uval)ptr;	
 	return size;
 }
 
@@ -172,6 +180,7 @@ of_add_memory(uval64 laddr, uval64 size)
 	return 0;
 }
 
+#ifdef __PPC__
 static int
 load_of(uval64 rmo_start, uval64 rmo_size)
 {
@@ -179,9 +188,10 @@ load_of(uval64 rmo_start, uval64 rmo_size)
 	char mem_node[64];
 	uval64 prop[2];
 	int ret;
+	char *dum = NULL;
 
       retry:
-	snprintf(mem_node, 64, "/memory@0x%x", 0);
+	snprintf(mem_node, sizeof(mem_node), "/memory@0x%x", 0);
 	prop[0] = 0;
 	prop[1] = stub_addr;
 	of_set_prop(mem_node, "available", prop, sizeof (prop));
@@ -190,9 +200,9 @@ load_of(uval64 rmo_start, uval64 rmo_size)
 	char ofstub[512];
 	char ofdimg[512];
 
-	snprintf(oftree, 512, HYPE_ROOT "/%s/of_tree", oh_pname);
-	snprintf(ofstub, 512, HYPE_ROOT "/%s/of_image", oh_pname);
-	snprintf(ofdimg, 512, HYPE_ROOT "/%s/of_tree.ofd", oh_pname);
+	snprintf(oftree, sizeof(oftree), HYPE_ROOT "/%s/of_tree", oh_pname);
+	snprintf(ofstub, sizeof(ofstub), HYPE_ROOT "/%s/of_image", oh_pname);
+	snprintf(ofdimg, sizeof(ofdimg), HYPE_ROOT "/%s/of_tree.ofd", oh_pname);
 
 	const char *const args[] = { "ofdfs", "pack", oftree, ofdimg, NULL };
 	run_command(args);
@@ -233,13 +243,14 @@ load_of(uval64 rmo_start, uval64 rmo_size)
 
 	msg("Loading OF stub: 0x%x[0x%x]\n", stub_addr, stub_size);
 	msg("Loading OF data: 0x%x[0x%x]\n", data_addr, data_size);
-	laddr_load(ofstub, rmo_start + stub_addr);
-	laddr_load(ofdimg, rmo_start + data_addr);
+	laddr_load(ofstub, rmo_start + stub_addr, &dum);
+	laddr_load(ofdimg, rmo_start + data_addr, &dum);
 
 	set_file_printf("r5", "0x%lx", stub_addr);
 	set_file_printf("r1", "0x%lx", stub_addr - PGSIZE);
 	return 0;
 }
+#endif
 
 static int
 parse_args(int argc, char **argv)
@@ -524,7 +535,7 @@ add_llan(uval lpid)
 
 	char llan_node[64];
 
-	snprintf(llan_node, 64, "/vdevice/l-lan@%x", liobn);
+	snprintf(llan_node, sizeof(llan_node), "/vdevice/l-lan@%x", liobn);
 
 	of_make_node(llan_node);
 	of_set_prop(llan_node, "name", "l-lan", -1);
@@ -549,6 +560,7 @@ add_llan(uval lpid)
 	return 0;
 }
 
+#ifdef __PPC__
 static int
 add_htab(uval lpid, uval size)
 {
@@ -585,6 +597,88 @@ add_htab(uval lpid, uval size)
 
 	return 0;
 }
+#endif
+
+#ifdef __i386__
+static int
+fill_pinfo(struct partition_info *pinfo, uval lpid, uval rmo_size)
+{
+	int i;
+	pinfo->lpid = lpid;
+	for (i = 0; i < MAX_MEM_RANGES; i++) {
+		pinfo->mem[i].size = INVALID_MEM_RANGE;
+		i++;
+	}
+	pinfo->mem[0].size = rmo_size;
+}
+
+static int
+inject_pinfo(struct partition_info *pinfo, uval length, 
+             uval base, uval img_offset)
+{
+	int rc = 0;
+	char *img_base = (char *)base;
+	char *magic = &img_base[img_offset + 0x10];
+	if (*(uval64 *)magic == HYPE_PARTITION_INFO_MAGIC_NUMBER) {
+		uval offset = *((uval *)(magic + 8));
+		memcpy(&img_base[offset], 
+		       pinfo,
+		       length);
+		rc = 1;
+	}
+	return rc;
+}
+
+static int
+add_cmdlineargs(uval base, uval offset, uval lpid)
+{
+	struct os_args os_args;
+	const char stdparms[] = " pci=off ide=off";
+	const char stdvdevs[] = " ibmvty=0x0,0x0,0x0,0xffffffff";
+	char *img_base = (char *)base;
+	(void)lpid;
+
+	char oftree[512];
+	char ofdimg[512];
+
+	snprintf(oftree, sizeof(oftree), HYPE_ROOT "/%s/of_tree", oh_pname);
+	snprintf(ofdimg, sizeof(ofdimg), HYPE_ROOT "/%s/vdevs", oh_pname);
+
+	const char *const args[] = { "vdevs", "pack", oftree, ofdimg, NULL };
+
+	run_command(args);
+
+	get_file("of_tree/chosen/bootargs", 
+	         os_args.commandlineargs, 
+	         sizeof(os_args.commandlineargs));
+
+	strncat(os_args.commandlineargs,
+	        stdparms,
+	        sizeof(os_args.commandlineargs));
+
+	get_file("vdevs",
+	         os_args.vdevargs,
+	         sizeof(os_args.vdevargs));
+
+	strncat(os_args.vdevargs,
+	        stdvdevs,
+	        sizeof(os_args.vdevargs));
+
+	/* copy into partition memory */
+	memcpy(&img_base[offset],
+	       &os_args,
+	       sizeof(os_args));
+
+	if (verbose) {
+		fprintf(stderr,"Cmd line: %s\n",
+		        os_args.commandlineargs);
+		fprintf(stderr,"vdevs   : %s\n",
+		        os_args.vdevargs);
+	}
+
+	set_file_printf("r4", "0x%lx", offset);
+}
+#endif
 
 int
 main(int argc, char **argv)
@@ -600,14 +694,16 @@ main(int argc, char **argv)
 
 	ASSERT(num_ranges > 0, "No memory ranges specified\n");
 
-	ret = get_file("state", scratch, 128);
+	ret = get_file("state", scratch, sizeof(scratch));
 	if (ret <= 0 || strncmp(scratch, "READY", ret) != 0) {
 		bailout("Partition not ready\n");
 	}
 
-	uval64 rmo_start = lranges[0].lr_base;
-	uval64 rmo_size = lranges[0].lr_size;
-	uval64 laddr = 0;
+	uval rmo_start = lranges[0].lr_base;
+	uval rmo_size = lranges[0].lr_size;
+	uval laddr = 0;
+	uval img_base = 0;
+	uval img_offset = 0;
 	int count = 0;
 
 	while (count < 255) {
@@ -615,17 +711,18 @@ main(int argc, char **argv)
 		char image_laddr[256];
 		char data[64];
 		struct stat sbuf;
+		uval base;
 
-		snprintf(image, 256, HYPE_ROOT "/%s/image%02x",
+		snprintf(image, sizeof(image), HYPE_ROOT "/%s/image%02x",
 			 oh_pname, count);
-		snprintf(image_laddr, 256, "image%02x_load", count);
+		snprintf(image_laddr, sizeof(image_laddr), "image%02x_load", count);
 		++count;
 
 		ret = stat(image, &sbuf);
 		if (ret < 0)
 			continue;
 
-		ret = get_file(image_laddr, data, 64);
+		ret = get_file(image_laddr, data, sizeof(data));
 		if (ret >= 0) {
 			uval64 l = strtoull(data, NULL, 0);
 
@@ -635,7 +732,12 @@ main(int argc, char **argv)
 			laddr = l;
 		}
 
-		int size = laddr_load(image, rmo_start + laddr);
+		int size = laddr_load(image, rmo_start + laddr, &base);
+
+		if (0 == img_base) {
+			img_base = base;
+			img_offset = laddr;
+		}
 
 		laddr = ALIGN_UP(laddr + size, PGSIZE);
 	}
@@ -643,7 +745,7 @@ main(int argc, char **argv)
 	char pinfo_buf[64];
 	uval64 pinfo;
 
-	ret = get_file("pinfo", pinfo_buf, 64);
+	ret = get_file("pinfo", pinfo_buf, sizeof(pinfo_buf));
 
 	if (ret <= 0 || (pinfo = strtoull(pinfo_buf, NULL, 0)) <= 0) {
 		pinfo = (uval64)-1;
@@ -686,7 +788,9 @@ main(int argc, char **argv)
 		++i;
 	}
 
+#ifdef __PPC__
 	add_htab(lpid, total);
+#endif
 
 	if (get_file_numeric("res_console_srv", &console_ua) < 0) {
 		console_ua = 0;
@@ -721,7 +825,8 @@ main(int argc, char **argv)
 	}
 
 	if (console_ua) {
-		printf("Registering console vterm: 0x%lx -> 0x%lx:0x%llx\n",
+		printf("Registering console vterm: "
+		       UVAL_CHOOSE("0x%lx","0x%llx")" -> 0x%lx:0x%llx\n",
 		       console_ua, lpid, vty0);
 		hargs.opcode = H_REGISTER_VTERM;
 		hargs.args[0] = console_ua;
@@ -735,7 +840,21 @@ main(int argc, char **argv)
 
 	add_llan(lpid);
 
+#ifdef __PPC__
 	load_of(lranges[0].lr_base, lranges[0].lr_size);
+#endif
+#ifdef __i386__
+	if (0 != img_base) {
+		static struct partition_info part_info[2];
+		fill_pinfo(&part_info[1], lpid, rmo_size);
+		if (inject_pinfo(part_info, sizeof(part_info), 
+		                img_base, img_offset)) {
+			add_cmdlineargs(img_base, 
+			                0x1000, /* offset in image for data */ 
+			                lpid);
+		}
+	}
+#endif
 
 	hargs.opcode = H_SET_SCHED_PARAMS;
 	hargs.args[0] = lpid;
@@ -752,7 +871,7 @@ main(int argc, char **argv)
 
 	char buf[64];
 
-	ret = get_file("pc", buf, 64);
+	ret = get_file("pc", buf, sizeof(buf));
 	if (ret >= 0) {
 		buf[ret] = 0;
 		hargs.args[1] = strtoull(buf, NULL, 0);
@@ -765,8 +884,8 @@ main(int argc, char **argv)
 	while (x < 8) {
 		int y = 0;
 
-		snprintf(buf, 64, "r%d", x);
-		y = get_file(buf, buf, 64);
+		snprintf(buf, sizeof(buf), "r%d", x);
+		y = get_file(buf, buf, sizeof(buf));
 		if (y >= 0) {
 			buf[y] = 0;
 			hargs.args[x] = strtoull(buf, NULL, 0);

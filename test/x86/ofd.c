@@ -25,15 +25,13 @@
 #include <hcall.h>
 #include <sim.h>
 #include <objalloc.h>
+#include <sysipc.h>
 #include <x86/os_args.h>
 
 /* the number of vscsi servers on the IO partition */
 #define NUM_VSCSIS_ON_PARTITION		6
 /* the number of logical lans on any partition */
 #define NUM_LLAN_PER_PARTITION		2
-
-/* the ID of the fake IO partition */
-#define LPID_FAKE_IO			0x1002
 
 /* local datatypes */
 struct vio_llan_data {
@@ -272,7 +270,8 @@ ofd_vdevice_crq_vtpm(uval lpid)
 static uval
 ofd_vdevice_crq(uval lpid)
 {
-	if (LPID_FAKE_IO == lpid) {
+	if (CONTROLLER_LPID == lpid || 
+	    H_SELF_LPID == lpid) {
 		int i = 0;
 
 		/*

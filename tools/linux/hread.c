@@ -62,8 +62,8 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	uval64 addr;
-	uval64 len;
+	uval addr;
+	uval len;
 
 	if (parse_laddr(argv[1], &addr, &len) != 0 ) {
 		fprintf(stderr, "Bad argument format\n");

@@ -25,7 +25,7 @@ CUR_TOOL=HOST
 
 top_builddir = ../..
 
-PROGRAMS=hcall hload hmsg hmeminfo hpinfo hype_run_lpar hread hype_term ofdfs
+PROGRAMS=hcall hload hmsg hmeminfo hpinfo hype_run_lpar hread hype_term ofdfs vdevs
 SH_SCRIPTS=hvcall.sh hype_dump_regs.sh
 PL_SCRIPTS=hype_prep_lpar.pl hype_status.pl hype_kill.pl hype_reset.pl
 PL_LIBS=HypeConst.pm HypeUtil.pm
@@ -121,6 +121,8 @@ CC_WARN:=$(filter-out -Wcast-qual, $(CC_WARN)) -Wno-cast-qual
 ofdfs: $(top_builddir)/lib/$(ISA)/$(CPU_GRP)/libofd.a
 ofdfs: ofdfs.o
 ofdfs: HOST_LDFLAGS+=-lofd
+
+vdevs: vdevs.o
 
 hcall: hcall.o util.o
 hmeminfo: hmeminfo.o util.o

@@ -45,7 +45,7 @@
 extern int hcall_init(void); /* returns /dev/hcall fd */
 extern int hcall(oh_hcall_args* hargs);
 extern int sig_xirr_bind(uval32 xirr, int sig);
-extern int parse_laddr(const char* arg, uval64 *base, uval64 *size);
+extern int parse_laddr(const char* arg, uval *base, uval *size);
 extern uval mem_hold(uval size);
 
 extern int get_file(const char* name, char* buf, int len);
