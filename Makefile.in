@@ -19,8 +19,15 @@
 # 
 #
 
-SUBDIRS = exttools \
-	  tools @THINWIRE@ lib plugins test hype @TOP_SUBDIR@
+SUBDIRS= exttools \
+	 tools \
+	 @THINWIRE@ \
+	 lib \
+	 plugins \
+	 @LBOOT@\
+	 test \
+	 hype \
+	 @TOP_SUBDIR@
 
 top_srcdir = @top_srcdir@
 srcdir = @srcdir@
