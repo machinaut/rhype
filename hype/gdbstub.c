@@ -64,5 +64,7 @@ gdb_enter_notify(uval exception_type)
 {
 #ifdef DEBUG
 	hprintf("entering gdb: exception number 0x%lx\n", exception_type);
+#else
+	(void)exception_type;
 #endif
 }
