@@ -1,0 +1,50 @@
+# ############################################################################
+# (C) Copyright IBM Corp. 2000.
+# All Rights Reserved
+#
+#  $Id$
+# ############################################################################
+#
+# Makefile with all the rules to make MAN, HTML, PFD and PostScript documents
+#
+
+top_srcdir = @top_srcdir@
+srcdir=@srcdir@
+VPATH = @srcdir@:@srcdir@/../Figures:@srcdir@/../API:@srcdir@/..
+top_builddir = ..
+
+all: html
+
+include $(top_builddir)/Makefile.conf
+
+include $(srcdir)/../Figures/Makefile.fig
+
+COMMON += 
+#include $(srcdir)/../API/Makefile.api
+
+DOCSRCS = rhype.sgml 
+
+FORCE:
+
+HACKERS_GUIDE=$(top_builddir)/WhitePapers/HackersGuide/HackersGuide.html
+API=$(top_builddir)/API/API.html
+
+$(HACKERS_GUIDE) $(API): FORCE
+	$(MAKE) -C $(@D) $(@F)
+
+HackersGuide.shtml: $(HACKERS_GUIDE)
+	cat $(srcdir)/top.html $< $(srcdir)/bottom.html > $@
+
+index.shtml: $(TARGETS_HTML) top.html bottom.html
+	cat $(srcdir)/top.html $< $(srcdir)/bottom.html > $@
+
+index.shtml: HackersGuide.shtml
+
+html: index.shtml
+#ps:   $(TARGETS_PS)   
+#pdf:  $(TARGETS_PDF)
+#$(TARGETS): %: %.html %.ps %.pdf
+
+CLEAN_FILES += index.shtml HackersGuide.shtml rhype.html
+
+### watgsa:/projects/w/www-stage/hypervisor
