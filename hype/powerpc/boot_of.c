@@ -802,20 +802,24 @@ boot_fixup_chosen(void *mem)
 	rc = of_getprop(ch, "cpu", &val, sizeof (val));
 	if (rc > 0) {
 		rc = of_instance_to_path(val, ofpath, sizeof (ofpath));
-		assert(rc > 0, "could not find cpu package\n");
+		if (rc > 0) {
+			dn = ofd_node_find(mem, ofpath);
+			assert(dn >= 0, "no node for: %s\n", ofpath);
 
-		dn = ofd_node_find(mem, ofpath);
-		assert(dn >= 0, "no node for: %s\n", ofpath);
+			boot_cpu = dn;
+			val = dn;
 
-		boot_cpu = dn;
-		val = dn;
+			dn = ofd_node_find(mem, "/chosen");
+			assert(dn > 0, "no /chosen node\n");
 
-		dn = ofd_node_find(mem, "/chosen");
-		assert(dn > 0, "no /chosen node\n");
-
-		dc = ofd_prop_add(mem, dn, "cpu", &val, sizeof (val));
-		assert(dc > 0, "could not fix /chosen/cpu\n");
-		rc = 1;
+			dc = ofd_prop_add(mem, dn, "cpu", &val, sizeof (val));
+			assert(dc > 0, "could not fix /chosen/cpu\n");
+			rc = 1;
+		} else {
+			hputs("*** can't find path to booting cpu, "
+				"SMP is disabled\n");
+			boot_cpu = -1;
+		}
 	}
 	return rc;
 }
@@ -906,7 +910,7 @@ boot_cpus(uval ofd)
 		sz = ofd_getprop(m, cn, "reg", &reg, sizeof (reg));
 		assert(sz == sizeof (reg), "no reg value\n");
 
-		if (cn == boot_cpu) {
+		if (boot_cpu == -1 || cn == boot_cpu) {
 			hprintf("initing booting CPU core: 0x%x\n", reg);
 			cpu_core_init(ofd, cpus, reg);
 		} else {
@@ -920,6 +924,9 @@ boot_cpus(uval ofd)
 		}
 		++cpus;
 		cn = ofd_node_find_next(m, cn);
+		if (boot_cpu == -1) {
+			break;
+		}
 	}
 	return cpus;
 }
