@@ -28,6 +28,7 @@ OBJECTS +=	boot_cpu_leap.o \
 		h_enter.o \
 		h_eoi.o \
 		h_get_xive.o \
+		h_htab.o \
 		h_hypervisor_data.o \
 		h_logical_cache_load.o \
 		h_logical_cache_store.o \
