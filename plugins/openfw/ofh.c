@@ -322,7 +322,7 @@ ofh_test_method(uval nargs, uval nrets, sval argp[], sval retp[], uval b)
 	return OF_FAILURE;
 }
 extern uval32 _ofh_inited[0];
-extern uval32 _ofh_lastarg[0];
+extern uval _ofh_lastarg[0];
 
 sval
 ofh_handler(struct ofh_args_s *args, uval b)
