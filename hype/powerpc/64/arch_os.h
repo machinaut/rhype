@@ -90,7 +90,7 @@ struct os {
 	struct logical_memory_map logical_mmap;
 	struct aipc_services aipc_srv;
 	struct hash_table po_xirr_map;
-	struct io_chan *po_chan[CHANNEL_PER_OS];
+	struct io_chan *po_chan[CHANNELS_PER_OS];
 	uval po_vt[2];
 	struct page_share_mgr *po_psm;
 
