@@ -33,6 +33,9 @@ PL_LIBS=HypeConst.pm HypeUtil.pm
 OBJECTS=$(PROGRAMS:%=%.o) util.o
 
 TARGETS=hvcall.sh
+
+CLEAN_FILES=$(PROGRAMS) $(TARGETS)
+
 include $(top_builddir)/Makefile.conf
 
 -include Makefile.vars
@@ -71,6 +74,8 @@ INST_FW=$(LIBDIR)/of_image
 $(INST_FW): $(top_builddir)/plugins/openfw/powerpc/32/of_image
 	$(INSTALL) -m 0644 $^ $@
 endif
+
+all: $(PROGRAMS)
 
 install: $(INSTDIRS) $(SUBDIRS_INSTALL) \
 	$(INST_PROGRAMS) $(INST_SCRIPTS) $(INST_LIBS) $(INST_FW)
