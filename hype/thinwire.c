@@ -44,6 +44,7 @@ const char thinwire_magic_string[14] = "\000**thinwire**\000";
  */
 
 static struct io_chan *thinwire_ic;
+static uval thinwire_activated = 0;
 
 /*
  * MAX_CHANNEL cannot exceed 95 as encoding adds 0x20, and the high-order
@@ -128,7 +129,13 @@ thinwireRead(struct io_chan *ops, char *buf, uval max_length);
 static sval __gdbstub
 thinwireWrite(struct io_chan *ops, const char *buf, uval length);
 
-/* For all non-hype channels, use wrapper functions for now.
+static void __gdbstub
+activateThinWire(void);
+
+
+/* We don't setup the thinwire connection until an operation is done
+ * on one of the non-console channels. We use wrapper functions so
+ * that we can detect when to activate thinwire.
  * These will generate an hprintf so we can see from hype
  * output that some partition is trying to do thinwire IO.
  * The wrappers then move themselves out of the way and are
@@ -142,16 +149,16 @@ wrap_thinwireRead(struct io_chan *ops, char *buf, uval max_length);
 static sval __gdbstub
 wrap_thinwireWrite(struct io_chan *ops, const char *buf, uval length);
 
-static sval __gdbstub
-wrap_thinwireSimpleWrite(struct io_chan *ops, const char *buf, uval length);
-
 static sval __gdbstub wrap_thinwireReadAvail(struct io_chan *ops);
 
 static sval __gdbstub wrap_thinwireWriteAvail(struct io_chan *ops);
 
 static void tw_setops(struct io_chan *ops)
 {
-	if (getChanNum(ops) % CHANNEL_PER_OS == 0) {
+	if (! thinwire_activated)
+		activateThinWire();
+
+	if (getChanNum(ops) % CHANNELS_PER_OS == 0) {
 		ops->ic_write = thinwireSimpleWrite;
 	} else {
 		ops->ic_write = thinwireWrite;
@@ -187,14 +194,6 @@ wrap_thinwireWrite(struct io_chan *ops, const char *buf, uval length)
 }
 
 static sval __gdbstub
-wrap_thinwireSimpleWrite(struct io_chan *ops, const char *buf, uval length)
-{
-	tw_setops(ops);
-
-	return ops->ic_write(ops, buf, length);
-}
-
-static sval __gdbstub
 wrap_thinwireRead(struct io_chan *ops, char *buf, uval max_length)
 {
 	tw_setops(ops);
@@ -207,6 +206,11 @@ thinwireSimpleWrite(struct io_chan *ops, const char *buf, uval length)
 {
 	uval channel = getChanNum(ops);
 	char header[5];
+
+	if (! thinwire_activated) {
+		thinwire_ic->ic_write(thinwire_ic, buf, length);
+		return length;
+	}
 
 	/*
 	 * to write on thinwire, we output
@@ -242,6 +246,11 @@ thinwireWrite(struct io_chan *ops, const char *buf, uval length)
 	sval inlen;
 	char header[5];
 
+	if (! thinwire_activated) {
+		thinwire_ic->ic_write(thinwire_ic, buf, length);
+		return length;
+	}
+	
 	/*
 	 * to write on thinwire, we output
 	 * 0  -- write command
@@ -353,6 +362,10 @@ thinwireRead(struct io_chan *ops, char *buf, uval max_length)
 	sval inlen;
 	sval r_length = 0;
 
+	if (! thinwire_activated) {
+		return thinwire_ic->ic_read(thinwire_ic, buf, max_length);
+	}
+
 	/* take a lock to guarantee that the write/read is not interrupted */
 	if (!lock_held(&ops->lock)) {
 		/* see comment in Write() */
@@ -404,6 +417,11 @@ thinwireReadAvail(struct io_chan *ops)
 	uval channel = getChanNum(ops);
 	uval ret;
 
+	if (! thinwire_activated) {
+		sval d = thinwire_ic->ic_read_avail(thinwire_ic);
+		return d;
+	}
+
 	lock_acquire(&thinwire_ic->lock);
 	ret = ((locked_thinwireSelect(channel) & 0x1) != 0);
 	lock_release(&thinwire_ic->lock);
@@ -444,34 +462,19 @@ configThinWire(struct io_chan *ic)
 
 	lock_init(&chan.lock);
 
-	for (i = 0; i < CHANNEL_PER_OS; ++i) {
-		struct io_chan* ic = &channels[i];
-		if (i == 0) {
+	/* For all non-console channels, use wrapper functions for now.
+	 * These will activate thinwire and generate an hprintf so we
+	 * can see from hype output that some partition is trying to
+	 * do thinwire IO. The wrappers then move themselves out of
+	 * the way and are replaced with the regular thinwire wrappers.
+	 */
+	for (i = 0; i < MAX_CHANNELS; i++) {
+		ic = &channels[i];
+		if ((i % CHANNELS_PER_OS) == CONSOLE_CHANNEL) {
 			ic->ic_write = thinwireSimpleWrite;
 		} else {
-			ic->ic_write = thinwireWrite;
+			ic->ic_write = wrap_thinwireWrite;
 		}
-		ic->ic_write_avail = thinwireWriteAvail;
-		ic->ic_read = thinwireRead;
-		ic->ic_read_avail = thinwireReadAvail;
-
-		fill_io_chan(ic);
-	}
-
-	/* For all non-hype channels, use wrapper functions for now.
-	 * These will generate an hprintf so we can see from hype
-	 * output that some partition is trying to do thinwire IO.
-	 * The wrappers then move themselves out of the way and are
-	 * replaced with the regular thinwire wrappers.
-	 */
-	for (i = CHANNEL_PER_OS; i < MAX_CHANNELS; ++i) {
-		struct io_chan* ic = &channels[i];
-		if ((i % CHANNEL_PER_OS) == 0) {
-			ic->ic_write = wrap_thinwireSimpleWrite;
-		} else {
-			ic->ic_write = thinwireWrite;
-		}
-		ic->ic_write = wrap_thinwireWrite;
 		ic->ic_write_avail = wrap_thinwireWriteAvail;
 		ic->ic_read = wrap_thinwireRead;
 		ic->ic_read_avail = wrap_thinwireReadAvail;
@@ -479,12 +482,20 @@ configThinWire(struct io_chan *ic)
 		fill_io_chan(ic);
 	}
 
-	hprintf("enabling thinwire\n");
-
-
-	resetThinwire();
-#else
+	/* until thinwire_activated, pass-through reads to first partition */
+	ic = &channels[CHANNELS_PER_OS + CONSOLE_CHANNEL];
+	ic->ic_read = thinwireRead;
+	ic->ic_read_avail = thinwireReadAvail;
+	
+#else /* USE_THINWIRE_IO */
 	thinwire_ic = ic;
 #endif
 }
 
+static void __gdbstub
+activateThinWire()
+{
+	hprintf("activating thinwire\n");
+	resetThinwire();
+	thinwire_activated = 1;
+}
