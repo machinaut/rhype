@@ -28,7 +28,5 @@
 sval
 h_reg_crq(struct cpu_thread *thread, uval uaddr, uval queue, uval len)
 {
-	struct os *os = thread->cpu->os;
-
-	return crq_reg_crq(os, uaddr, queue, len);
+	return crq_reg(thread, uaddr, queue, len);
 }

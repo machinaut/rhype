@@ -41,7 +41,8 @@ extern sval crq_sys_init(void);
 extern sval crq_os_release_all(struct os *os);
 extern sval crq_try_copy(struct cpu_thread *thread, uval32 sliobn, uval sioba,
 			 uval32 dliobn, uval dioba, uval len);
-extern sval crq_reg_crq(struct os *os, uval uaddr, uval queue, uval len);
+extern sval crq_reg(struct cpu_thread *thread, uval uaddr,
+		    uval queue, uval len);
 extern sval crq_free_crq(struct os *os, uval uaddr);
 extern sval crq_send(struct os *os, uval uaddr, uval8 *msg);
 

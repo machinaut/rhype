@@ -42,17 +42,18 @@ struct crq_entry {
 struct crq_partner {
 	uval16 cp_flags;
 	uval16 cp_num_entries;
-	uval32 cp_next_entry;
+	uval16 cp_next_entry;
+	uval16 cp_owner_res;
+	uval cp_dma_size;
 	struct crq_entry *cp_crqs;
 	struct os *cp_os;
 	xirr_t cp_interrupt;
 	struct tce_data cp_tce_data;
-	struct vios_resource cp_res;
-};
-
-struct crq {
-	struct crq_partner crq_partner[2];
-	lock_t crq_lock;
+	struct vios_resource cp_res[2];
+	struct os *cp_reaper;
+	struct crq_partner *cp_partner;
+	lock_t cp_lock;
+	lock_t *cp_lock_ptr;
 };
 
 #define CRQ_FLAG_USED		1
@@ -60,235 +61,71 @@ struct crq {
 #define CRQ_FLAG_VALID		4
 
 /* local defines */
-
-/*
- * We need to base the following on endianess
- * to be able to treat CRQ entries as 2 64-bit
- * entries.
- */
-#ifdef __PPC__
-#define CRQ_HEADER_BYTE    0
-#else
-#define CRQ_HEADER_BYTE    7
-#endif
-
 /* Some defines for messages and used on CRQs */
 #define CRQ_EVT_CLOSE_HI        0xFF04000000000000ULL
 #define CRQ_EVT_CLOSE_LO        0x0000000000000000ULL
 
-#define INVALID_IDX  -1
+#define CRQ_TRANS_EVT_MASK      0xFF00000000000000ULL
+#define CRQ_CMD_RESP_MASK       0x8000000000000000ULL
 
-
-#define NUM_CRQ_LUT_ENTRIES	(1 << 8)
-#define CRQ_LUT_MASK		(NUM_CRQ_LUT_ENTRIES - 1)
-
-/* local variables */
-static struct crq *crq_entries;
-static sval crq_lut[NUM_CRQ_LUT_ENTRIES];
-static uval volatile crq_map;
-
-
-#define CRQ_MAP_TYPE_BITS	(sizeof (crq_map) * 8)
-#define CRQ_SLOT_MASK		(CRQ_MAP_TYPE_BITS - 1)
-
-static inline sval
-crq_slot(uval val)
+static __inline__ struct vios_resource *
+crq_getvres(struct crq_partner *cp)
 {
-	uval slot;
-	sval idx = val & CRQ_LUT_MASK;
-
-	slot = crq_lut[idx];
-
-	if (slot >= MAX_GLOBAL_CRQ) {
-		return -1;
-	}
-
-	return slot;
+	return &cp->cp_res[cp->cp_owner_res];
 }
 
-static inline uval
-crq_slot_set(uval val, uval type)
+static __inline__ struct sys_resource *
+crq_getsres(struct crq_partner *cp)
 {
+	struct vios_resource *res;
 
-	val &= ~((uval)CRQ_SLOT_MASK);
-	val |= type & CRQ_SLOT_MASK;
+	res = crq_getvres(cp);
 
-	return val;
+	return &res->vr_res;
 }
 
-static inline sval
-crq_map_acquire(void)
+static __inline__ struct crq_partner *
+crq_get_crq(uval liobn)
 {
-	uval bit;
-	uval map;
-	uval new;
-
-	do {
-		map = crq_map;
-		bit = ffz(map);
-		if (bit >= CRQ_MAP_TYPE_BITS) {
-			return -1;
-		}
-
-		new = map | (1U << bit);
-	} while (!cas_uval(&crq_map, map, new));
-
-	return bit;
+	return (struct crq_partner *)xir_get_device(liobn);
 }
 
-static inline sval
-crq_map_release(uval bit)
+static __inline__ struct os *
+crq_getos(struct crq_partner *cp)
 {
-	uval map;
-	uval new;
-
-	if (bit >= CRQ_MAP_TYPE_BITS) {
-		assert(0, "bit value out of range\n");
-		return -1;
-	}
-
-	do {
-		map = crq_map;
-		new = map & ~(1U << bit);
-	} while (!cas_uval(&crq_map, map, new));
-
-	return bit;
+	return cp->cp_os;
 }
 
-static inline struct crq *
-crq_get_crq(uval slot)
-{
-	if (slot >= MAX_GLOBAL_CRQ) {
-		assert(0, "slot out of range");
-		return NULL;
-	}
-	return &crq_entries[slot];
-}
-
-static inline sval
-crq_get_idx(struct crq *my_crq, struct os *os)
-{
-	if (my_crq->crq_partner[0].cp_os == os) {
-		return 0;
-	} else if (my_crq->crq_partner[1].cp_os == os) {
-		return 1;
-	}
-	return INVALID_IDX;
-}
-
-
-static inline struct crq_partner *
-crq_partner_get(uval liobn)
-{
-	sval slot = crq_slot(liobn);
-	struct crq *my_crq;
-
-	if (slot < 0) {
-		return NULL;
-	}
-
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
-		return NULL;
-	}
-
-	if (liobn == my_crq->crq_partner[0].cp_res.vr_liobn) {
-		return &my_crq->crq_partner[0];
-	} else if (liobn == my_crq->crq_partner[1].cp_res.vr_liobn) {
-		return &my_crq->crq_partner[1];
-	} else {
-		assert(0, "could not find os for liobn=0x%lx",
-		       liobn);
-	}
-	return NULL;
-}
-
-static inline struct os *
-crq_get_os(uval liobn)
-{
-	struct crq_partner *cp = crq_partner_get(liobn);
-	if (NULL != cp) {
-		return cp->cp_os;
-	}
-	return NULL;
-}
-
-static inline sval
-crq_claim_idx(struct crq *my_crq, struct os *os)
-{
-	if (NULL == my_crq->crq_partner[0].cp_os) {
-		my_crq->crq_partner[0].cp_os = os;
-		return 0;
-	} else if (NULL == my_crq->crq_partner[1].cp_os) {
-		my_crq->crq_partner[1].cp_os = os;
-		return 1;
-	}
-	return INVALID_IDX;
-}
-
-static inline sval
-crq_init(struct crq *crq)
-{
-	memset(crq, 0x0, sizeof (*crq));
-	lock_init(&crq->crq_lock);
-	return 1;
-}
-
-static inline sval
-crq_init_entries(void)
-{
-	uval i = 0;
-
-	while (i < MAX_GLOBAL_CRQ) {
-		crq_init(crq_get_crq(i));
-		i++;
-	}
-	return 1;
-}
-
-static inline uval
+static __inline__ uval
 crq_flags_test(struct crq_partner *cp, uval16 flags)
 {
 	return (flags == (cp->cp_flags & flags));
 }
 
-static inline struct crq *
-crq_check_unused(uval slot, sval *idx, struct os *os)
+static __inline__ uval
+crq_check_unused(struct crq_partner *cp)
 {
-	struct crq *my_crq;
+	return (0 == (cp->cp_flags & CRQ_FLAG_USED));
+}
 
-	if (slot >= MAX_GLOBAL_CRQ) {
-		assert(0, "slot number out of range!\n");
-		return NULL;
-	}
-
-	my_crq = crq_get_crq(slot);
-	*idx = crq_get_idx(my_crq, os);
-	if (INVALID_IDX == *idx) {
-		*idx = crq_claim_idx(my_crq, os);
-		if (INVALID_IDX == *idx) {
-			my_crq = NULL;
-		}
-	}
-
-	return my_crq;
+static __inline__ uval
+crq_haspartner(struct crq_partner *cp)
+{
+	return crq_flags_test(cp, (CRQ_FLAG_USED | CRQ_FLAG_HAS_PARTNER));
 }
 
 static sval
-crq_put_entry_raw_locked(struct crq *crq, uval srcidx, const uval8 *msg)
+crq_put_entry_raw_locked(struct crq_partner *dst, const uval8 *msg)
 {
 	uval ret = H_Success;
-	uval destidx = srcidx ^ 1;
 
-	if (crq_flags_test(&crq->crq_partner[destidx],
-			   CRQ_FLAG_USED | CRQ_FLAG_HAS_PARTNER)) {
-		uval entry = crq->crq_partner[destidx].cp_next_entry;
+	if (crq_haspartner(dst)) {
+		uval entry = dst->cp_next_entry;
 
 		DEBUG_OUT(DBG_CRQ, "%s: Sending message to partner.\n",
 			  __func__);
 
-		copy_out(&((crq->crq_partner[destidx].cp_crqs)[entry].msg_hi),
-			 msg, 8 * 2);
+		copy_out(&((dst->cp_crqs)[entry].msg_hi), msg, 8 * 2);
 
 		/*
 		 * Send signal to partner OS; other layer will determine
@@ -298,15 +135,12 @@ crq_put_entry_raw_locked(struct crq *crq, uval srcidx, const uval8 *msg)
 			  "%s: Trying to raise an interrupt for the partner "
 			  "to pick up the msg.\n", __func__);
 
-		xir_raise(crq->crq_partner[destidx].cp_interrupt,
-			  NULL);
+		xir_raise(dst->cp_interrupt, NULL);
 
-		crq->crq_partner[destidx].cp_next_entry++;
-		if (crq->crq_partner[destidx].cp_next_entry ==
-		    crq->crq_partner[destidx].cp_num_entries) {
-			crq->crq_partner[destidx].cp_next_entry = 0;
+		dst->cp_next_entry++;
+		if (dst->cp_next_entry == dst->cp_num_entries) {
+			dst->cp_next_entry = 0;
 		}
-
 	} else {
 		DEBUG_OUT(DBG_CRQ,
 			  "%s: There's no partner who could receive the "
@@ -317,14 +151,18 @@ crq_put_entry_raw_locked(struct crq *crq, uval srcidx, const uval8 *msg)
 	return ret;
 }
 
-static inline sval
-crq_put_entry_locked(struct crq *crq, uval srcidx, const uval8 *msg)
+static sval
+crq_put_entry_locked(struct crq_partner *dst, uval8 *msg)
 {
 	sval ret;
+	uval64 *m = (uval64 *)msg;
 
-	if ((msg[CRQ_HEADER_BYTE] & 0xff) != 0xff &&
-	    (msg[CRQ_HEADER_BYTE] & 0x80) != 0x00) {
-		ret = crq_put_entry_raw_locked(crq, srcidx, msg);
+	/* 
+	 * This produces good code on x86 AND is machine-independent
+	 */
+	if ((*m & CRQ_TRANS_EVT_MASK) != CRQ_TRANS_EVT_MASK &&
+	    (*m & CRQ_CMD_RESP_MASK) != 0x0ULL) {
+		ret = crq_put_entry_raw_locked(dst, msg);
 	} else {
 		ret = H_Parameter;
 	}
@@ -337,129 +175,54 @@ static const uval64 close_msg[2] = {
 };
 
 static sval
-crq_release_locked(struct crq *crq, uval slot, uval idx)
+crq_release_locked(struct crq_partner *cp)
 {
 	sval ret = H_Success;
+	struct crq_partner *peer = cp->cp_partner;
+
+	ret = crq_put_entry_raw_locked(peer, (const uval8 *)close_msg);
 
 	/*
-	 * Check whether I have a partner and if
-	 * so, let's send him a message that we closed this crq.
-	 */
-	if (crq_flags_test(&crq->crq_partner[idx ^ 1],
-			   CRQ_FLAG_HAS_PARTNER | CRQ_FLAG_USED)) {
-		ret = crq_put_entry_raw_locked(crq, idx,
-					       (const uval8 *)close_msg);
-	} else if (0 == (crq->crq_partner[idx ^ 1].cp_flags & CRQ_FLAG_USED)) {
-		/*
-		 * If there's not even a partner I was the last one
-		 * to have used the slot. So I just release the slot as
-		 * well.
-		 */
-		crq_map_release(slot);
-	}
-
-	/*
-	 * We cannot clear the TCE entries anymore, because
+	 * We cannot clear the TCE entries because
 	 * otherwise kernel modules will fail even when rmmod
 	 * is done or later when insmod is done. The only one
 	 * who is setting up TCE entries is the controller.
 	 * Clearing TCE entries will also be a job of the controller.
 	 */
 
-	crq->crq_partner[idx].cp_os = NULL;
 	/*
 	 * The partner does not have a partner anymore.
 	 */
-	crq->crq_partner[idx].cp_flags = 0;
-	crq->crq_partner[idx ^ 1].cp_flags &= ~CRQ_FLAG_HAS_PARTNER;
+	peer->cp_flags &= ~CRQ_FLAG_HAS_PARTNER;
+
+	cp->cp_flags &= ~(CRQ_FLAG_USED | CRQ_FLAG_VALID);
+
+#if NEED_TO_REAP_HERE
+	cp->cp_os = cp->cp_reaper;
+#endif
+
 	return ret;
 }
 
-/*
- * In case a partition dies and some crqs need to be cleaned up,
- * this function walks all the slots and releases all the
- * crqs that belonged to that partition.
- */
-sval
-crq_os_release_all(struct os *os)
+static __inline__ sval
+crq_release_internal(struct crq_partner *cp)
 {
-	uval slot = 0;
+	sval ret;
 
-	while (slot < MAX_GLOBAL_CRQ) {
-		struct crq *my_crq;
-		sval idx;
+	lock_acquire(cp->cp_lock_ptr);
+	ret = crq_release_locked(cp);
+	lock_release(cp->cp_lock_ptr);
 
-		my_crq = crq_get_crq(slot);
-		if (NULL == my_crq) {
-			break;
-		}
-		lock_acquire(&my_crq->crq_lock);
-
-		idx = crq_get_idx(my_crq, os);
-
-		if (INVALID_IDX != idx) {
-			crq_release_locked(my_crq, slot, idx);
-		}
-		lock_release(&my_crq->crq_lock);
-		slot++;
-	}
-	return 1;
+	/*
+	 * Cannot call this function, because ther are tce_puts coming
+	 * even after crq_free_crq has been called!!!
+	 *
+	 * xir_default_config(xenc, NULL, NULL);
+	 */
+	return ret;
 }
 
-/*
- * Check whether a slot is used by someone who has no partner, yet.
- */
-static inline sval
-crq_is_partner_and_open(struct crq *my_crq, uval idx)
-{
-	return (CRQ_FLAG_USED  ==
-		(my_crq->crq_partner[idx].cp_flags &
-		 (CRQ_FLAG_USED | CRQ_FLAG_HAS_PARTNER)));
-}
-
-static struct crq *
-crq_find_open_partner(uval slot, uval *idx)
-{
-	uval j = 0;
-	struct crq *my_crq = crq_get_crq(slot);
-
-	if (NULL == my_crq) {
-		return NULL;
-	}
-
-	lock_acquire(&my_crq->crq_lock);
-
-	while (j <= 1) {
-		if (crq_is_partner_and_open(my_crq, j)) {
-			if (crq_flags_test(&my_crq->crq_partner[j],
-					   CRQ_FLAG_HAS_PARTNER)) {
-				DEBUG_OUT(DBG_CRQ,
-					  "%s: Partner already matched up!\n",
-					  __func__);
-				lock_release(&my_crq->crq_lock);
-				return NULL;
-			} else {
-				DEBUG_OUT(DBG_CRQ,
-					  "%s: Found partner! SLOT=%ld\n",
-					  __func__, slot);
-				/*
-				 * this one is used, but does not have a
-				 * partner
-				 */
-				*idx = (j ^ 1);
-				lock_release(&my_crq->crq_lock);
-				return my_crq;
-			}
-		}
-		j++;
-	}
-
-	lock_release(&my_crq->crq_lock);
-
-	return NULL;
-}
-
-static inline void *
+static void *
 crq_addr_lookup(struct crq_partner *cp, uval addr, uval size)
 {
 	union tce_bdesc bd;
@@ -470,29 +233,23 @@ crq_addr_lookup(struct crq_partner *cp, uval addr, uval size)
 }
 
 static sval
-crq_setup_locked(struct os *os, struct crq *crq, uval idx,
-		 uval buffer, uval buffersize)
+crq_setup_osdata(struct crq_partner *cp, uval buffer, uval buffersize)
 {
-	struct crq_partner *cp = crq->crq_partner;
+	cp->cp_flags = CRQ_FLAG_USED;
 
-	cp[idx].cp_os = os;
-	cp[idx].cp_flags = CRQ_FLAG_USED;
+	cp->cp_flags |= CRQ_FLAG_HAS_PARTNER;
+	cp->cp_partner->cp_flags |= CRQ_FLAG_HAS_PARTNER;
 
-	if (crq_flags_test(&cp[idx ^ 1], CRQ_FLAG_USED)) {
-		cp[0].cp_flags |= CRQ_FLAG_HAS_PARTNER;
-		cp[1].cp_flags |= CRQ_FLAG_HAS_PARTNER;
-	}
+	cp->cp_num_entries = buffersize / sizeof (struct crq_entry);
+	cp->cp_next_entry = 0;
+	cp->cp_crqs = (struct crq_entry *)
+		crq_addr_lookup(cp, buffer, buffersize);
 
-	cp[idx].cp_num_entries = buffersize / sizeof (struct crq_entry);
-	cp[idx].cp_next_entry = 0;
-	cp[idx].cp_crqs = (struct crq_entry *)
-		crq_addr_lookup(&cp[idx], buffer, buffersize);
-
-	assert(cp[idx].cp_tce_data.t_tce != NULL,
-	       "TCE was not set up!\n");
+	assert(cp->cp_tce_data.t_tce != NULL, "TCE was not set up!\n");
 
 	DEBUG_OUT(DBG_CRQ, "%s: ---- crq buffer at %p  irq=0x%x\n",
-		  __func__, cp[idx].cp_crqs, cp[idx].cp_interrupt);
+		  __func__, cp->cp_crqs, cp->cp_interrupt);
+
 	return 1;
 }
 
@@ -500,46 +257,28 @@ crq_setup_locked(struct os *os, struct crq *crq, uval idx,
  * The following functions are directly called through the
  * h-calls.
  */
-
 static sval
 crq_tce_put(struct os *os, uval32 liobn, uval ioba, union tce ltce)
 {
-	sval slot;
-	struct crq *my_crq;
-	sval idx;
+	sval ret;
+	struct crq_partner *cp;
 
-	slot = crq_slot(liobn);
-	if (slot < 0) {
+	cp = crq_get_crq(liobn);
+
+	if (cp == NULL) {
 		return H_Parameter;
 	}
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
+	if (os != crq_getos(cp)) {
 		return H_Parameter;
 	}
 
-	idx = crq_get_idx(my_crq, os);	
+	assert(cp->cp_tce_data.t_tce != NULL,
+	       "TCE was not set up (liobn=0x%x)!\n", liobn);
 
-	if (idx == INVALID_IDX) {
-		idx = crq_claim_idx(my_crq, os);
-	}
+	ret = tce_put(os, &cp->cp_tce_data, ioba, ltce);
 
-	if (idx != INVALID_IDX) {
-		sval ret;
-
-		assert(my_crq->crq_partner[idx].cp_tce_data.t_tce != NULL,
-		       "TCE was not set up (liobn=0x%x)!\n",
-		       liobn);
-
-		/* FIXME should not need this lock */
-		lock_acquire(&my_crq->crq_lock);
-		ret = tce_put(os, &my_crq->crq_partner[idx].cp_tce_data,
-			      ioba, ltce);
-		lock_release(&my_crq->crq_lock);
-
-		return ret;
-	}
-	return H_Parameter;
+	return ret;
 }
 
 sval
@@ -548,63 +287,46 @@ crq_try_copy(struct cpu_thread *thread, uval32 sliobn, uval sioba,
 {
 	sval ret;
 	struct os *os = thread->cpu->os;
-	struct crq *my_crq = NULL;
-	uval idx = 0;
-	sval slot;
+	struct crq_partner *src,
+	           *dst;
+	uval *s_pa,
+	    *d_pa;
 
 	/*
 	 * There must be a better way of doing this on PPC
 	 * with a valid device tree.
 	 */
 	if ((dliobn & ~0U) == ~0U) {
-		/* source: from IO partition */
-		slot = crq_slot(sliobn);
-		idx = 1;
+		/* only for x86 */
+		src = crq_get_crq(sliobn);
+		if (src == NULL) {
+			return H_Parameter;
+		}
+		dst = src->cp_partner;
 	} else {
 		/* destination: to IO partition */
-		slot = crq_slot(dliobn);
+		dst = crq_get_crq(dliobn);
+		if (dst == NULL) {
+			return H_Parameter;
+		}
+		src = dst->cp_partner;
 	}
 
-	if (slot < 0) {
+	if (os != crq_getos(src) && os != crq_getos(dst)) {
 		return H_Parameter;
 	}
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
-		return H_Parameter;
-	}
+	lock_acquire(src->cp_lock_ptr);
 
-	if (my_crq->crq_partner[0].cp_interrupt == dliobn) {
-		idx = 0;
-	} else if (my_crq->crq_partner[1].cp_interrupt == dliobn) {
-		idx = 1;
-	}
-
-	lock_acquire(&my_crq->crq_lock);
-
-	if (INVALID_IDX != crq_get_idx(my_crq, os)) {
-		uval *s_pa;
-		uval *d_pa;
-		struct os *os1;
-		struct os *os2;
-
-		os1 = my_crq->crq_partner[idx].cp_os;
-		os2 = my_crq->crq_partner[idx ^ 1].cp_os;
-
-		d_pa = crq_addr_lookup(&my_crq->crq_partner[idx], dioba, len);
-		if (d_pa) {
-			s_pa = crq_addr_lookup(&my_crq->crq_partner[idx ^ 1],
-					       sioba, len);
-			if (s_pa) {
-				DEBUG_OUT(DBG_CRQ,
-					  " %s: Copying from %p to %p\n",
-					  __func__, s_pa, d_pa);
-				copy_mem(d_pa, s_pa, len);
-				ret = H_Success;
-			} else {
-				ret = H_Parameter;
-			}
-
+	d_pa = crq_addr_lookup(dst, dioba, len);
+	if (d_pa) {
+		s_pa = crq_addr_lookup(src, sioba, len);
+		if (s_pa) {
+			DEBUG_OUT(DBG_CRQ,
+				  " %s: Copying from %p to %p\n",
+				  __func__, s_pa, d_pa);
+			copy_mem(d_pa, s_pa, len);
+			ret = H_Success;
 		} else {
 			ret = H_Parameter;
 		}
@@ -613,7 +335,7 @@ crq_try_copy(struct cpu_thread *thread, uval32 sliobn, uval sioba,
 		ret = H_Parameter;
 	}
 
-	lock_release(&my_crq->crq_lock);
+	lock_release(src->cp_lock_ptr);
 
 	return ret;
 }
@@ -621,44 +343,32 @@ crq_try_copy(struct cpu_thread *thread, uval32 sliobn, uval sioba,
 sval
 crq_free_crq(struct os *os, uval uaddr)
 {
-	sval ret = H_Success;
-	sval myidx = 0;
-	struct crq *my_crq;
-	uval slot = crq_slot(uaddr);
+	sval ret;
+	struct crq_partner *cp;
+
+	cp = crq_get_crq(uaddr);
 
 	DEBUG_OUT(DBG_CRQ, "%s: u_addr: 0x%lx\n", __func__, uaddr);
 
-	if (slot >= MAX_GLOBAL_CRQ) {
-		assert(0, "slot value out of range!\n");
+	if (cp == NULL) {
 		return H_Parameter;
 	}
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
+	if (os != crq_getos(cp)) {
 		return H_Parameter;
 	}
-	lock_acquire(&my_crq->crq_lock);
 
-	myidx = crq_get_idx(my_crq, os);
-
-	if (INVALID_IDX == myidx) {
-		ret = H_Parameter;
-	} else {
-		crq_release_locked(my_crq, slot, myidx);
-	}
-
-	lock_release(&my_crq->crq_lock);
+	ret = crq_release_internal(cp);
 
 	return ret;
 }
 
 sval
-crq_reg_crq(struct os *os, uval uaddr, uval queue, uval len)
+crq_reg(struct cpu_thread *thread, uval uaddr, uval queue, uval len)
 {
-	sval ret;
-	struct crq *my_crq = NULL;
-	uval slot = crq_slot(uaddr);
-	uval again_ctr = 5;
+	sval ret = H_Parameter;
+	struct crq_partner *cp;
+	struct os *os = thread->cpu->os;
 
 	DEBUG_OUT(DBG_CRQ, "%s: uaddr: 0x%lx queue: 0x%lx len: 0x%lx\n",
 		  __func__, uaddr, queue, len);
@@ -669,71 +379,34 @@ crq_reg_crq(struct os *os, uval uaddr, uval queue, uval len)
 		return H_Parameter;
 	}
 
-	if (slot >= MAX_GLOBAL_CRQ) {
-		assert(0, "slot value out of range!\n");
+	cp = crq_get_crq(uaddr);
+
+	if (cp == NULL) {
 		return H_Parameter;
 	}
 
-	/*
-	 * Try to find an empty crq entry in the global list
-	 */
-
-	for (;;) {
-		sval availidx;
-
-		my_crq = crq_find_open_partner(slot, &availidx);
-
-		if (NULL != my_crq) {
-			lock_acquire(&my_crq->crq_lock);
-			/*
-			 * Check whether this partner is still good
-			 * now that we have a lock!
-			 */
-			if (!crq_is_partner_and_open(my_crq, availidx ^ 1)) {
-				lock_release(&my_crq->crq_lock);
-				if (--again_ctr) {
-					continue;
-				} else {
-					return H_Parameter;
-				}
-			}
-
-			DEBUG_OUT(DBG_CRQ,
-				  "%s: A matching partner exists for "
-				  "the CRQ.\n", __func__);
-
-			if (1 == crq_setup_locked(os, my_crq, availidx,
-						  queue, len)) {
-				ret = H_Success;
-			} else {
-				ret = H_Busy;
-			}
-			lock_release(&my_crq->crq_lock);
-		} else {
-			my_crq = crq_check_unused(slot, &availidx, os);
-			if (NULL != my_crq) {
-				uval lk;
-
-				lock_acquire(&my_crq->crq_lock);
-
-				DEBUG_OUT(DBG_CRQ,
-					  "%s: There's no matching partner "
-					  "for the CRQ!\n", __func__);
-
-				lk = crq_setup_locked(os, my_crq, 0,
-						      queue, len);
-				if (1 == lk) {
-					ret = H_Closed;
-				} else {
-					ret = H_Busy;
-				}
-				lock_release(&my_crq->crq_lock);
-			} else {
-				ret = H_Resource;
-			}
-		}
-		break;
+	if (os != crq_getos(cp)) {
+		return H_Parameter;
 	}
+
+	lock_acquire(cp->cp_lock_ptr);
+
+	if (crq_getos(cp) == os) {
+		if (crq_check_unused(cp)) {
+			struct crq_partner *peer = cp->cp_partner;
+
+			crq_setup_osdata(cp, queue, len);
+			if (crq_check_unused(peer)) {
+				ret = H_Closed;
+			} else {
+				ret = H_Success;
+			}
+		} else {
+			ret = H_Resource;
+		}
+	}
+
+	lock_release(cp->cp_lock_ptr);
 
 	return ret;
 }
@@ -742,80 +415,110 @@ sval
 crq_send(struct os *os, uval uaddr, uval8 *msg)
 {
 	sval ret;
-	sval idx;
-	uval slot = crq_slot(uaddr);
-	struct crq *my_crq;
+	struct crq_partner *cp;
+	struct crq_partner *peer;
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
+	cp = crq_get_crq(uaddr);
+	if (cp == NULL) {
 		return H_Parameter;
 	}
-	lock_acquire(&my_crq->crq_lock);
 
-	idx = crq_get_idx(my_crq, os);
+	if (os != crq_getos(cp)) {
+		return H_Parameter;
+	}
 
-	if (INVALID_IDX == idx) {
+	peer = cp->cp_partner;
 
+	lock_acquire(peer->cp_lock_ptr);
+
+	if (crq_haspartner(peer)) {
+		ret = crq_put_entry_locked(peer, msg);
+	} else {
 		DEBUG_OUT(DBG_CRQ, "%s: Not sending this message since "
-			  "CRQ not found.\n", __func__);
+			  "CRQ has no partner.\n", __func__);
 
 		ret = H_Parameter;
-	} else {
-		ret = crq_put_entry_locked(my_crq, idx, msg);
 	}
-	lock_release(&my_crq->crq_lock);
+
+	lock_release(peer->cp_lock_ptr);
 
 	return ret;
 }
 
 static sval
-crq_set_slot(struct cpu_thread *thread, struct crq *crq,
-	     uval xenc1, uval xenc2, uval dma_range, uval slot)
+crq_struct_init(struct crq_partner *cp, uval xenc,
+		struct cpu_thread *thread, uval dma_range)
 {
-	crq_lut[xenc1 & CRQ_LUT_MASK] = slot;
-	crq_lut[xenc2 & CRQ_LUT_MASK] = slot;
+	struct os *os = thread->cpu->os;
 
-	/* setup tce areas */
-	if (tce_alloc(&crq->crq_partner[0].cp_tce_data,
-		      0x0, dma_range)) {
-		if (tce_alloc(&crq->crq_partner[1].cp_tce_data,
-			      0x0, dma_range)) {
-			struct os *os = thread->cpu->os;
+	memset(cp, 0x0, sizeof (*cp));
+	if (tce_alloc(&cp->cp_tce_data, 0x0, dma_range)) {
+		struct sys_resource *res;
+		struct vios_resource *vres;
+		uval dum;
+		sval rc;
 
-			resource_init(&crq->crq_partner[0].cp_res.vr_res,
-				      NULL, INTR_SRC);
-			resource_init(&crq->crq_partner[1].cp_res.vr_res,
-				      NULL, INTR_SRC);
-			
-			/* I am the owner of both 'sides' */
-			crq->crq_partner[0].cp_os = os;
-			crq->crq_partner[1].cp_os = os;
-			
-			crq->crq_partner[0].cp_res.vr_liobn = xenc1;
-			crq->crq_partner[1].cp_res.vr_liobn = xenc2;
-			
-			crq->crq_partner[0].cp_interrupt = xenc1;
-			crq->crq_partner[1].cp_interrupt = xenc2;
-			
-			crq->crq_partner[0].cp_flags |= CRQ_FLAG_VALID;
-			crq->crq_partner[1].cp_flags |= CRQ_FLAG_VALID;
-			
-			return_arg(thread, 1, xenc1);
-			return_arg(thread, 2, xenc2);
-			return_arg(thread, 3, dma_range);
-			
+		lock_init(&cp->cp_lock);
+
+		/* I am the owner of this */
+		cp->cp_os = os;
+		cp->cp_interrupt = xenc;
+		cp->cp_owner_res = 0;
+		cp->cp_res[0].vr_liobn = xenc;
+		cp->cp_res[1].vr_liobn = xenc;
+		cp->cp_flags |= CRQ_FLAG_VALID;
+		cp->cp_dma_size = dma_range;
+
+		res = crq_getsres(cp);
+		vres = crq_getvres(cp);
+		resource_init(res, NULL, INTR_SRC);
+
+		xir_default_config(cp->cp_interrupt, thread, cp);
+
+		rc = insert_resource(res, os);
+		assert(rc >= 0, "Can't give CRQ: 0x%lx to os\n",
+		       vres->vr_liobn);
+
+		lock_acquire(&res->sr_lock);
+		rc = accept_locked_resource(res, &dum);
+		assert(rc == H_Success, "Can't bind crq to os\n");
+		lock_release(&res->sr_lock);
+
+		return 1;
+	}
+	return 0;
+}
+
+static __inline__ void
+crq_struct_clear(struct crq_partner *cp)
+{
+	tce_free(&cp->cp_tce_data);
+	xir_default_config(cp->cp_interrupt, NULL, NULL);
+}
+
+static sval
+crq_pair_setup(struct cpu_thread *thread,
+	       struct crq_partner *cp1, uval xenc1,
+	       struct crq_partner *cp2, uval xenc2, uval dma_range)
+{
+	if (crq_struct_init(cp1, xenc1, thread, dma_range)) {
+		if (crq_struct_init(cp2, xenc2, thread, dma_range)) {
+			/* Connect the two */
+			cp1->cp_partner = cp2;
+			cp2->cp_partner = cp1;
+
+			/* use one common lock to avoid possible deadlocks */
+			cp1->cp_lock_ptr = &cp1->cp_lock;
+			cp2->cp_lock_ptr = &cp1->cp_lock;
 
 			DEBUG_OUT(DBG_CRQ, "%s: Successfully set up TCEs for "
-				  "CRQ on xenc1=0x%lx, xenc2=0x%lx.\n",
-				  __func__,
-				  xenc1, xenc2);
+				  "CRQ on xenc1=0x%lx, xnec2=0x%lx.\n",
+				  __func__, xenc1, xenc2);
 
 			return 1;
 		}
-		tce_free(&crq->crq_partner[0].cp_tce_data);
+		crq_struct_clear(cp1);
 	}
-	crq_lut[xenc1 & CRQ_LUT_MASK] = -1;
-	crq_lut[xenc2 & CRQ_LUT_MASK] = -1;
 
 	return 0;
 }
@@ -823,53 +526,48 @@ crq_set_slot(struct cpu_thread *thread, struct crq *crq,
 static sval
 crq_acquire(struct cpu_thread *thread, uval dma_range)
 {
-	sval slot;
+	struct crq_partner *cp;
+	sval isrc;
+	uval xenc1,
+	     xenc2;
 
-	slot = crq_map_acquire();
-	if (slot >= 0) {
-		struct crq *crq;
-		sval isrc;
-		uval xenc1, xenc2;
+	isrc = xir_find(XIRR_CLASS_CRQ);
+	assert(isrc != -1, "Can't register crq!");
 
-		isrc = xir_find(XIRR_CLASS_LLAN);
+	if (isrc >= 0) {
+		xenc1 = xirr_encode(isrc, XIRR_CLASS_CRQ);
+
+		/* have to do find again (?) */
+		isrc = xir_find(XIRR_CLASS_CRQ);
 		assert(isrc != -1, "Can't register crq!");
-		
+
 		if (isrc >= 0) {
+			xenc2 = xirr_encode(isrc, XIRR_CLASS_CRQ);
 
-			xenc1 = xirr_encode(isrc, XIRR_CLASS_CRQ);
+			DEBUG_OUT(DBG_CRQ,
+				  "xenc1=0x%lx xenc2=0x%lx\n", xenc1, xenc2);
 
-			isrc = xir_find(XIRR_CLASS_LLAN);
-			assert(isrc != -1, "Can't register crq!");
-			
-			if (isrc >= 0) {
-				xenc2 = xirr_encode(isrc, XIRR_CLASS_CRQ);
+			cp = halloc(sizeof (struct crq_partner[2]));
 
-				DEBUG_OUT(DBG_CRQ,
-					  "SLOT=%ld xenc1=0x%lx xenc2=0x%lx\n",
-					  slot, xenc1, xenc2);
+			if (NULL != cp) {
+				uval rc;
 
-				crq = crq_get_crq(slot);
-			
-				if (NULL != crq) {
-					uval rc;
+				rc = crq_pair_setup(thread,
+						    &cp[0], xenc1,
+						    &cp[1], xenc2, dma_range);
 
-					rc = crq_set_slot(thread, crq,
-							  xenc1, xenc2,
-							  dma_range,
-							  slot);
-					if (rc) {
-						return H_Success;
-					}
+				if (rc) {
+					return_arg(thread, 1, xenc1);
+					return_arg(thread, 2, xenc2);
+					return_arg(thread, 3, dma_range);
+
+					return H_Success;
 				}
-				xir_default_config(xenc2, NULL, NULL);
 			}
-			xir_default_config(xenc1, NULL, NULL);
 		}
-		crq_map_release(slot);
 	}
 
-	DEBUG_OUT(DBG_CRQ, "%s: Could NOT set up TCEs for CRQ",
-	        __func__);
+	DEBUG_OUT(DBG_CRQ, "%s: Could NOT set up TCEs for CRQ", __func__);
 
 	return H_UNAVAIL;
 }
@@ -877,53 +575,73 @@ crq_acquire(struct cpu_thread *thread, uval dma_range)
 static sval
 crq_release(struct os *os, uval32 liobn)
 {
-	(void)liobn;
-	(void)os;
+	struct crq_partner *cp;
 
-	DEBUG_OUT(DBG_CRQ, "--- %s: Not doing anything!", __func__);
+	cp = crq_get_crq(liobn);
 
-	return H_Function;
+	if (cp == NULL) {
+		return H_Parameter;
+	}
+
+	if (crq_getos(cp) != os) {
+		return H_Parameter;
+	}
+
+	if (!crq_release_internal(cp)) {
+		return H_Busy;
+	}
+
+	return H_Success;
 }
 
 static sval
 crq_accept(struct os *os, uval liobn, uval *retval)
 {
-	struct crq *my_crq;
-	sval slot;
-	
-	(void)os;
-	slot = crq_slot(liobn);
-	if (slot < 0) {
-		return H_Parameter;
-	}
+	struct crq_partner *cp;
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
-		return H_Parameter;
-	}
+	cp = crq_get_crq(liobn);
 
-	*retval = liobn;
-	return H_Success;
-}
-
-static sval
-crq_invalidate(struct os *os, uval liobn)
-{
-	(void)os;
-	struct crq_partner *cp = crq_partner_get(liobn);
-	if (cp) {
-		cp->cp_flags &= ~CRQ_FLAG_VALID;
-		return H_Success;
+	if (NULL != cp) {
+		if (os == crq_getos(cp)) {
+			*retval = liobn;
+			return H_Success;
+		}
 	}
 
 	return H_Parameter;
 }
 
 static sval
+crq_invalidate(struct os *os, uval liobn)
+{
+	(void)os;
+	struct crq_partner *cp;
+
+	cp = crq_get_crq(liobn);
+
+	if (cp == NULL) {
+		return H_Parameter;
+	}
+
+	if (os == crq_getos(cp)) {
+		cp->cp_flags &= ~CRQ_FLAG_VALID;
+	}
+	return H_Success;
+}
+
+static sval
 crq_return(struct os *os, uval liobn)
 {
-	(void)liobn;
-	(void)os;
+	struct crq_partner *cp;
+
+	cp = crq_get_crq(liobn);
+
+	if (cp == NULL) {
+		return H_Parameter;
+	}
+	if (os == crq_getos(cp)) {
+		DEBUG_OUT(DBG_CRQ, "%s: owner\n", __func__);
+	}
 	return H_Success;
 }
 
@@ -931,91 +649,82 @@ static sval
 crq_grant(struct sys_resource **res,
 	  struct os *src, struct os *dst, uval liobn)
 {
-	sval slot;
-	sval idx = INVALID_IDX;
-	struct crq *my_crq;
-	
-	slot = crq_slot(liobn);
-	if (slot < 0) {
+	struct crq_partner *cp;
+	struct cpu_thread *thread = &dst->cpu[0]->thread[0];
+	uval old;
+	uval new;
+
+	cp = crq_get_crq(liobn);
+
+	if (cp == NULL) {
 		return H_Parameter;
 	}
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
+	if (crq_getos(cp) != src) {
 		return H_Parameter;
 	}
 
-	if (my_crq->crq_partner[0].cp_interrupt == liobn) {
-		idx = 0;
-	} else if (my_crq->crq_partner[1].cp_interrupt == liobn) {
-		idx = 1;
-	}
+	/* set new owner */
+	cp->cp_os = dst;
+	/* where it's coming from */
+	cp->cp_reaper = src;
 
-	if (my_crq->crq_partner[idx].cp_os != src) {
-		return H_Parameter;
-	}
-		
+	old = cp->cp_owner_res;
+	new = old ^ 1;
 
-	if (INVALID_IDX != idx) {
-		struct sys_resource *my_res;
-		struct cpu_thread *thread = &dst->cpu[0]->thread[0];
+	assert(cp->cp_res[new].vr_res.sr_owner == NULL, "new owner not 0\n");
+	if (cp->cp_res[new].vr_res.sr_owner == NULL) {
+		/* disable interrupts */
+		xir_default_config(cp->cp_interrupt, NULL, NULL);
 
-		uval xenc;
-		sval rc;
-		uval dum;
+		cp->cp_owner_res = new;
+		cp->cp_res[new].vr_res.sr_owner = dst;
+		*res = &cp->cp_res[new].vr_res;
 
-		/* set new owner */
-		my_crq->crq_partner[idx].cp_os = dst;
+		resource_init(*res, NULL, INTR_SRC);
 
-		xenc = my_crq->crq_partner[idx].cp_res.vr_liobn;
-		xir_default_config(xenc, NULL, NULL);
-		xir_default_config(xenc, 
-				   thread,
-				   &my_crq->crq_partner[idx]);
-		
-		my_res = &my_crq->crq_partner[idx].cp_res.vr_res;
-		rc = insert_resource(my_res, dst);
-		assert(rc >= 0,
-		       "Can't give crq to os");
-		lock_acquire(&my_res->sr_lock);
-		rc = accept_locked_resource(my_res, &dum);
-		assert(rc == H_Success, "Can't bind crq to os\n");
-		lock_release(&my_res->sr_lock);
+		tce_ia(&cp->cp_tce_data);
+		force_rescind_resource(&cp->cp_res[old].vr_res);
 
-		*res = my_res;
+		xir_default_config(cp->cp_interrupt, thread, cp);
+
 		return H_Success;
 	}
-	
+
 	return H_UNAVAIL;
 }
 
 static sval
 crq_rescind(struct os *os, uval liobn)
 {
-	struct os *cos = crq_get_os(liobn);
+	hprintf("Rescinding 0x%lx\n", liobn);
+	struct crq_partner *cp;
 
-	(void)os;
-	if (NULL == cos) {
+	cp = crq_get_crq(liobn);
+
+	if (cp == NULL) {
 		return H_Parameter;
 	}
-	return crq_release(cos, liobn);
+
+	if (os == crq_getos(cp)) {
+		uval other = cp->cp_owner_res ^ 1;
+
+		if (cp->cp_res[other].vr_res.sr_owner != NULL) {
+			force_rescind_resource(&cp->cp_res[other].vr_res);
+		}
+		return crq_release(os, liobn);
+	}
+	/* just allow the rescind to happen */
+	return H_Success;
 }
 
 static sval
-crq_conflict(struct sys_resource *res1,
-             struct sys_resource *res2,
-             uval liobn)
+crq_conflict(struct sys_resource *res1, struct sys_resource *res2, uval liobn)
 {
-	struct crq *my_crq;
-	sval slot;
-	
-	slot = crq_slot(liobn);
-	if (slot < 0) {
-		return H_Parameter;
-	}
+	struct crq_partner *cp;
 
-	my_crq = crq_get_crq(slot);
-	if (NULL == my_crq) {
+	cp = crq_get_crq(liobn);
+	if (cp == NULL) {
 		return H_Parameter;
 	}
 
@@ -1025,17 +734,6 @@ crq_conflict(struct sys_resource *res1,
 
 	return H_Success;
 }
-
-static inline void 
-crq_init_lut()
-{
-	uval i = 0;
-	while (i < NUM_CRQ_LUT_ENTRIES) {
-		crq_lut[i] = -1;
-		i++;
-	}
-}
-
 
 static struct vios crq_vios = {
 	.vs_name = "crq",
@@ -1053,21 +751,12 @@ static struct vios crq_vios = {
 sval
 crq_sys_init(void)
 {
-	uval size = sizeof (struct crq[MAX_GLOBAL_CRQ]);
+	if (vio_register(&crq_vios, HVIO_CRQ) == HVIO_CRQ) {
+		xir_init_class(XIRR_CLASS_CRQ, NULL, NULL);
 
-	crq_entries = halloc(size);
-
-	assert(NULL != crq_entries, "could not allocate memory for CRQs\n");
-
-	if (NULL != crq_entries) {
-		if (vio_register(&crq_vios, HVIO_CRQ) == HVIO_CRQ) {
-			crq_init_entries();
-			xir_init_class(XIRR_CLASS_CRQ, NULL, NULL);
-			
-			crq_init_lut();
-			return 1;
-		}
+		return 1;
 	}
+	debug_level = (1 << DBG_CRQ);
 	assert(0, "failed to register: %s\n", crq_vios.vs_name);
 	return 0;
 }
