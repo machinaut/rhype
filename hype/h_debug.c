@@ -26,7 +26,7 @@
 #include <thinwire.h>
 #include <os.h>
 
-
+#ifdef DEBUG
 static sval
 probe_regs(struct cpu_thread *thread, uval target, uval start)
 {
@@ -45,7 +45,7 @@ probe_regs(struct cpu_thread *thread, uval target, uval start)
 	}
 	return H_Success;
 }
-
+#endif
 
 sval
 h_debug(struct cpu_thread *thread, uval cmd, uval arg1,
