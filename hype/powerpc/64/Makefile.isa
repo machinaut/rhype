@@ -21,7 +21,10 @@
 #Should realy put much of this in ISA directory
 
 -include $(srcdir)/$(ISA)/$(CPU_GRP)/$(CPU_CORE)/Makefile.cpu
-
+ifneq ($(top_subdir),)
+# yeah, I hate if's but this path is resolvable by accident
+-include $(top_srcdir)/$(top_subdir)/hype/$(CPU_CORE)/Makefile.cpu
+endif
 
 ifndef LTEXT
 # link text at 2Meg

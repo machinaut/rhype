@@ -17,8 +17,9 @@
  *
  * $Id$
  */
-#ifndef _PU_CPU_THREAD_H
-#define _PU_CPU_THREAD_H
+
+#ifndef _970_CPU_THREAD_H
+#define _970_CPU_THREAD_H
 
 #include <config.h>
 #include <lpcr.h>
@@ -65,4 +66,5 @@ cpu_verify_rmo(uval rmo, uval rmo_size)
 
 extern void imp_thread_init(struct cpu_thread *thr);
 
-#endif
+#endif /* _970_CPU_THREAD_H */
+
