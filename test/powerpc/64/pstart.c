@@ -33,6 +33,9 @@ start_partition(struct partition_status *ps, struct load_file_entry *lf,
 	uval lofd = 0;
 
 	/* give the partition an htab */
+
+	ps->log_htab_bytes = log_htab_bytes;
+
 	rc = hcall_htab(NULL, ps->lpid, ps->log_htab_bytes);
 	assert(rc == H_Success, "hcall_htab() failed\n");
 
