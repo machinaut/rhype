@@ -86,9 +86,7 @@ unsigned std_divisors[][2] = {
 
 static sval uartNS16750_write_avail(struct io_chan *ops);
 static sval uartNS16750_write(struct io_chan *ops, const char *buf, uval len);
-#ifdef ENABLE_HWFLOW
 static sval uartNS16750_read_avail(struct io_chan *ops);
-#endif
 static sval uartNS16750_read(struct io_chan *ops, char *buf, uval len);
 static sval uartNS16750_read_all(struct io_chan *ops, char *buf, uval len);
 static void uartNS16750_noread(struct io_chan *ops);
@@ -117,11 +115,7 @@ struct uart uartNS16750 = {
 		.ic_write_avail = uartNS16750_write_avail,
 		.ic_read = uartNS16750_read,
 		.ic_read_all = uartNS16750_read_all,
-#ifdef ENABLE_HWFLOW
 		.ic_read_avail = uartNS16750_read_avail,
-#else
-		.ic_read_avail = 0,
-#endif
 		.ic_noread = uartNS16750_noread}
 };
 
@@ -199,14 +193,36 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	 * Set baudrate and other parameters, and raise Data-Terminal-Ready.
 	 */
 	if (baudrate != 0) {
-		comOut(LCR, LCR_BD + LCR_8N1);
-
+		comOut(LCR, 0);
+		comOut(IER, 0xff);
+		comOut(IER, 0x0);
+		comOut(LCR, LCR_BD);
 		comOut(BD_LB, baudrate & 0xff);
 		comOut(BD_UB, baudrate >> 8);
 		comOut(LCR, LCR_8N1);
+		comOut(MCR, MCR_RTS|MCR_DTR);
 		comOut(FCR, FCR_FE);
 	}
-	comOut(MCR, 0);
+	comOut(MCR, MCR_RTS|MCR_DTR);
+
+#ifdef TEST_SERIAL_PORT
+	while (0) {
+		char c;
+
+		int x = 1<<22;
+		uval32 lsr;
+		comOut(THR,'a');
+		while (x--) eieio();
+		comIn(LSR, lsr);
+		if ((lsr & LSR_DR) == LSR_DR) {
+			comIn(RBR, c);
+			comOut(THR,c);
+			comOut(THR,'a');
+		} else {
+			comOut(THR,'b');
+		}
+	}
+#endif
 
 #ifdef DEBUG
 	uartNS16750_debug_status(&uart->ops);
@@ -222,7 +238,7 @@ uartNS16750_write(struct io_chan *ops, const char *buf, uval len)
 	uval l = 0;
 
 	/* turn off incoming */
-	comOut(MCR, MCR_DTR);
+	/* comOut(MCR, MCR_DTR); */
 	while (l < len) {
 		char c = *buf++;
 
@@ -234,7 +250,7 @@ uartNS16750_write(struct io_chan *ops, const char *buf, uval len)
 		++l;
 
 	}
-	comOut(MCR, 0);
+	/* comOut(MCR, 0); */
 	return l;
 }
 
@@ -259,7 +275,7 @@ uartNS16750_read_all(struct io_chan *ops, char *buf, uval len)
 	char c;
 	uval l = 0;
 	/* turn on request to send to accept input */
-	comOut(MCR,   MCR_RTS);
+	/* comOut(MCR,   MCR_RTS); */
 	while (l < len) {
 		while (1) {
 			comIn(LSR, lsr);
@@ -269,7 +285,7 @@ uartNS16750_read_all(struct io_chan *ops, char *buf, uval len)
 		*buf++ = c;
 		++l;
 	}
-	comOut(MCR,   0);
+	/* comOut(MCR,   0); */
 	return l;
 }
 
@@ -283,7 +299,7 @@ uartNS16750_read(struct io_chan *ops, char *buf, uval len)
 	uval x;
 
 	/* turn on request to send to accept input */
-	comOut(MCR, MCR_RTS);
+	/* comOut(MCR, MCR_RTS);*/
 
 	while (l < len) {
 		x = 1<<16;
@@ -299,11 +315,10 @@ uartNS16750_read(struct io_chan *ops, char *buf, uval len)
 		++l;
 	}
 
-	comOut(MCR, 0);
+	/* comOut(MCR, 0); */
 	return l;
 }
 
-#ifdef ENABLE_HWFLOW
 static sval
 uartNS16750_read_avail(struct io_chan *ops)
 {
@@ -313,7 +328,6 @@ uartNS16750_read_avail(struct io_chan *ops)
 	comIn(LSR, lsr);
 	return ((lsr & LSR_DR) == LSR_DR);
 }
-#endif
 
 static void
 uartNS16750_noread(struct io_chan *ops)
@@ -369,7 +383,7 @@ uartNS16750_write_pre_thinwire(struct io_chan *ops, const char *buf, uval len)
 	comOut(LCR, LCR_8N1);
 
 	/* DTR up */
-	comOut(MCR, MCR_DTR);
+	comOut(MCR, MCR_DTR|MCR_RTS);
 
 	/*
 	 * Wait for Data-Set-Ready to go up.
