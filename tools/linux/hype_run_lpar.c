@@ -437,9 +437,9 @@ add_vdev(uval lpid, uval vdev)
 			if (strncmp(name,
 				    vscsis, sizeof (vscsis)) == 0 ) {
 				/* we know the lient crq is +1 */
-				printf("calling add_vscs()\n");
-				rc = add_vscsi(lpid, vdev + 1,
-					       0x00800000);
+				++vdev;
+				printf("calling add_vscsi(0x%lx)\n", vdev);
+				rc = add_vscsi(lpid, vdev, 0x00800000);
 			}
 		}
 	}
@@ -504,6 +504,42 @@ add_llan(uval lpid)
 	return 0;
 }
 
+static int
+add_htab(uval lpid, uval size)
+{
+	static uval32 ibm_pft_size[] = { 0x0, 0x0 };
+	uval s = 1;
+	uval lsize = 0;
+	char cpu_node[64];
+	uval cpu;
+	int ret;
+
+	while (s < size) {
+		s <<= 1;
+		++lsize;
+	}
+
+	/* 1 << i is now the smallest log2 >= size */
+	lsize -= 6; /* 1/64 of i */
+	
+	hargs.opcode = H_HTAB;
+	hargs.args[0] = lpid;
+	hargs.args[1] = lsize;
+
+	ret = hcall(&hargs);
+	ASSERT(ret >= 0, "hcall(HTAB, 0x%lx\n", lsize);
+
+	ibm_pft_size[1] = lsize;
+
+	cpu = 0;
+	snprintf(cpu_node, sizeof(cpu_node), "cpus/cpu@%ld", cpu);
+	of_set_prop(cpu_node, "ibm,pft-size",
+		    ibm_pft_size, sizeof (ibm_pft_size));
+
+	printf("ibm,pft-size: 0x%x, 0x%x\n", ibm_pft_size[0], ibm_pft_size[1]);
+	
+	return 0;
+}
 
 int
 main(int argc, char **argv)
@@ -512,6 +548,7 @@ main(int argc, char **argv)
 	hcall_fd = hcall_init();
 	int ret = parse_args(argc, argv);
 	if (ret < 0) return ret;
+	uval total = 0;
 
 	ASSERT(num_ranges > 0, "No memory ranges specified\n");
 
@@ -530,7 +567,8 @@ main(int argc, char **argv)
 		char data[64];
 		struct stat sbuf;
 
-		snprintf(image, 256, HYPE_ROOT "/%s/image%02x", oh_pname, count);
+		snprintf(image, 256, HYPE_ROOT "/%s/image%02x",
+			 oh_pname, count);
 		snprintf(image_laddr, 256, "image%02x_load", count);
 		++count;
 
@@ -583,6 +621,7 @@ main(int argc, char **argv)
 	system(scratch);
 
 	of_add_memory(0, rmo_size);
+	total += rmo_size;
 
 	int i = 1;
 	while (i < num_ranges) {
@@ -590,8 +629,11 @@ main(int argc, char **argv)
 		uval64 size = lranges[i].lr_size;
 
 		add_memory(lpid, base, size);
+		total += size;
 		++i;
 	}
+
+	add_htab(lpid, total);
 
 	if (get_file_numeric("res_console_srv", &console_ua) < 0) {
 		console_ua = 0;
