@@ -417,7 +417,7 @@ crq_is_partner_and_open(struct crq *my_crq, uval idx)
 		 (CRQ_FLAG_USED | CRQ_FLAG_HAS_PARTNER)));
 }
 
-static inline struct crq *
+static struct crq *
 crq_find_open_partner(uval slot, uval *idx)
 {
 	uval j = 0;
