@@ -246,7 +246,6 @@ arch_os_destroy(struct os *os)
 	free_pages(&phys_pa, thread->tss.esp0, HV_STACK_SIZE);
 
 	lpidtag_release(os);
-	crq_os_release_all(os);
 
 	if (thread->mbox != NULL)
 		hv_unmap(ALIGN_DOWN((uval)thread->mbox, PGSIZE), PGSIZE);
