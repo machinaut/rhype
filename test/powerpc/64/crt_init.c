@@ -22,6 +22,9 @@
 #include <mmu.h>
 #include <sysipc.h>
 
+/* we should parse the device tree instead */
+uval log_htab_bytes = LOG_DEFAULT_HTAB_BYTES;
+
 struct partition_info pinfo[2] __attribute__ ((weak)) = {{
 	.large_page_size1 = LARGE_PAGE_SIZE16M,
 	.large_page_size2 = LARGE_PAGE_SIZE1M
@@ -34,11 +37,9 @@ dump_pinfo(void)
 {
 	hprintf("Dump of pinfo @ %p (%p):\n"
 		"  sysid            = 0x%x   0x%x\n"
-		"  htab_size        = 0x%lx  0x%lx\n"
 		"  sfw_tlb          = 0x%x   0x%x\n",
 		&pinfo[1], &pinfo[0],
 		pinfo[1].lpid, pinfo[0].lpid,
-		pinfo[1].htab_size, pinfo[0].htab_size,
 		pinfo[1].sfw_tlb, pinfo[0].sfw_tlb);
 
 	hprintf("  large_page_size1 = 0x%lx  0x%lx\n"

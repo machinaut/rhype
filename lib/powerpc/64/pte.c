@@ -23,6 +23,9 @@
 #include <hcall.h>
 #include <lpar.h>
 #include <lib.h>
+#include <htab.h>
+
+extern uval log_htab_bytes;
 
 uval
 get_esid(uval ea)
@@ -52,11 +55,14 @@ static uval
 get_pteg(uval vaddr, uval vsid, uval pg_size)
 {
 	uval hash;
-	uval vpn = vaddr >> (pg_size); 
-	uval mask = (1 << (28 - pg_size)) - 1;	
+	uval vpn = vaddr >> (pg_size);
+	uval mask = (1 << (28 - pg_size)) - 1;
+	uval htab_bytes = 1UL << log_htab_bytes;
+	uval hash_mask = (htab_bytes >> LOG_PTEG_SIZE) - 1;
+
 	hash = (vsid & VSID_HASH_MASK) ^ (vpn & mask);
 
-	return (hash & HTAB_HASH_MASK);
+	return hash & hash_mask;
 }
 
 int

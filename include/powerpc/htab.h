@@ -16,33 +16,30 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  * $Id$
- *
  */
-#include <config.h>
-#include <asm.h>
-#include <lpar.h>
-#include <hypervisor.h>
 
-#include <lib/powerpc/hcall_def.S>
+#ifndef _POWERPC_HTAB_H
+#define _POWERPC_HTAB_H
 
-/* Get the common interfaces */
-#include <lib/hcall_common.S>
+#define LOG_DEFAULT_HTAB_BYTES		20
+#define DEFAULT_HTAB_BYTES		(1UL << LOG_HTAB_BYTES)
 
-/* Definitions for hypervisor functions. Note that we do not use the
- * first macro arg */
+/* 256KB, from PowerPC Architecture specification */
+#define HTAB_MIN_LOG_SIZE 18
 
-HCALL(x, 1,hcall_enter, H_ENTER)
-HCALL(x, 8,hcall_read, H_READ)
-HCALL(x, 1,hcall_thread_control, H_THREAD_CONTROL)
-HCALL(x, 0,hcall_cede, H_CEDE)
+#define LOG_NUM_PTES_IN_PTEG	3
+#define NUM_PTES_IN_PTEG	(1 << LOG_NUM_PTES_IN_PTEG)
+#define LOG_PTE_SIZE		4
+#define LOG_PTEG_SIZE		(LOG_NUM_PTES_IN_PTEG + LOG_PTE_SIZE)
+#define LOG_HTAB_HASH		(LOG_HTAB_SIZE - LOG_PTEG_SIZE)
 
-HCALL(x, 0,hcall_page_init, H_PAGE_INIT)
-HCALL(x, 1,hcall_set_asr, H_SET_ASR)  /* ISTAR only. */
-HCALL(x, 0,hcall_asr_on, H_ASR_ON)  /* ISTAR only. */
-HCALL(x, 0,hcall_asr_off, H_ASR_OFF)  /* ISTAR only. */
+/* real page number shift to create the rpn field of the pte */
+#define RPN_SHIFT 		12
 
-HCALL(x, 8,hcall_hypervisor_data, H_HYPERVISOR_DATA)
+/* page protection bits in pp1 (name format: MSR:PR=0 | MSR:PR=1) */
+#define PP_RWxx 0x0UL
+#define PP_RWRW 0x2UL
+#define PP_RWRx 0x4UL
+#define PP_RxRx 0x6UL
 
-HCALL(x, 2,hcall_get_xive, H_GET_XIVE)
-HCALL(x, 0,hcall_set_xive, H_SET_XIVE)
-HCALL(x, 0,hcall_htab, H_HTAB)
+#endif
