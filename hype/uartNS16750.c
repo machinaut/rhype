@@ -214,8 +214,11 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 	}
 #endif
 
-	if (io_addr)
+#ifdef DEBUG
+	if (io_addr) {
 		uartNS16750_debug_status(&uart->ops);
+	}
+#endif
 
 	return fill_io_chan(&uartNS16750.ops);
 }
