@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -32,6 +32,7 @@
 #include <thread_control_area.h>
 #include <sim.h>
 #include <asm.h>
+#include <thinwire.h>
 
 struct boot_of {
 	uval bo_r3;
@@ -286,10 +287,11 @@ find_serial(void)
 			ret = of_getprop(pkg, "stdout", &iout, sizeof (iout));
 		}
 		if (ret != -1) {
+			ofout_path[0] = 0;
 			ret = of_instance_to_path(iout, ofout_path,
 						  sizeof (ofout_path));
 			hprintf("path: %d %s\n", ret, ofout_path);
-			if (ret != -1) {
+			if (ofout_path[0]) {
 				ofout = of_finddevice(ofout_path);
 			}
 		}
@@ -417,6 +419,8 @@ probe_serial(phandle node, uval32 phys_size)
 	debug_printf("serialPortAddr %lx\n", io_addr);
 	debug_printf("clock-frequency: %x\n", clock);
 	debug_printf("baudrate: %d\n", baudrate);
+
+	serial_init_fn = init_fn;
 
 	c = (*init_fn) (io_addr, clock, baudrate);
 
@@ -794,10 +798,10 @@ boot_fixup_chosen(void *mem)
 
 	ch = of_finddevice("/chosen");
 	assert(ch > 0, "/chosen not found\n");
-	
+
 	rc = of_getprop(ch, "cpu", &val, sizeof (val));
 	if (rc > 0) {
-		rc = of_package_to_path(val, ofpath, sizeof (ofpath));
+		rc = of_instance_to_path(val, ofpath, sizeof (ofpath));
 		assert(rc > 0, "could not find cpu package\n");
 
 		dn = ofd_node_find(mem, ofpath);
@@ -901,14 +905,14 @@ boot_cpus(uval ofd)
 
 		sz = ofd_getprop(m, cn, "reg", &reg, sizeof (reg));
 		assert(sz == sizeof (reg), "no reg value\n");
-			
+
 		if (cn == boot_cpu) {
 			hprintf("initing booting CPU core: 0x%x\n", reg);
 			cpu_core_init(ofd, cpus, reg);
 		} else {
 			path = ofd_node_path(m, cn);
 			assert(path != NULL, "no path for CPU\n");
-			
+
 			cp = of_finddevice(path);
 			assert(cp > 0, "%s: not found\n", path);
 

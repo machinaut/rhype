@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -250,7 +250,7 @@ thinwireWrite(struct io_chan *ops, const char *buf, uval length)
 		thinwire_ic->ic_write(thinwire_ic, buf, length);
 		return length;
 	}
-	
+
 	/*
 	 * to write on thinwire, we output
 	 * 0  -- write command
@@ -486,16 +486,73 @@ configThinWire(struct io_chan *ic)
 	ic = &channels[CHANNELS_PER_OS + CONSOLE_CHANNEL];
 	ic->ic_read = thinwireRead;
 	ic->ic_read_avail = thinwireReadAvail;
-	
+
+
+//	activateThinWire();
+
 #else /* USE_THINWIRE_IO */
 	thinwire_ic = ic;
 #endif
 }
 
+struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
+				   uval32 baudrate);
+
+
+#define __STR(x) #x
+#define STRINGIFY(x) __STR(x)
 static void __gdbstub
 activateThinWire()
 {
+#ifdef THINWIRE_BAUDRATE
+	const char *speed = STRINGIFY(THINWIRE_BAUDRATE);
+#else
+	const char *speed = NULL;
+#endif
+
+	char buf[32];
+	int j = 0;
+	int i = 0;
 	hprintf("activating thinwire\n");
+
 	resetThinwire();
 	thinwire_activated = 1;
+
+	if (speed == NULL) {
+		return;
+	}
+
+	buf[i++] = 'S';
+	buf[i++] = ' ';
+	buf[i++] = ' ';
+	buf[i++] = ' ' + strlen(speed);
+	buf[i++] = ' ';
+
+	while (speed[j]) {
+		buf[i++] = speed[j++];
+	}
+
+	thinwire_ic->ic_write(thinwire_ic, buf, i);
+	thinwire_ic->ic_read_all(thinwire_ic, buf, 5);
+
+	int len = parseThinWireReply(0, buf);
+
+	if (len < 0) {
+		/* We were rejected */
+		return;
+	}
+
+	thinwire_ic->ic_read_all(thinwire_ic, buf, len);
+
+	if (memcmp(speed, buf, strlen(speed)) != 0) {
+		/* We were rejected */
+		return;
+	}
+
+	/* Change speed */
+	thinwire_ic = (*serial_init_fn)(0, 0, THINWIRE_BAUDRATE);
+
+	/* Wait for last message to be replayed at new speed */
+	thinwire_ic->ic_read_all(thinwire_ic, buf, len + 5);
+
 }
