@@ -56,7 +56,7 @@ oh_hcall_args hargs;
 static uval crq;
 static int vtys;
 static int wait_for_key;
-static uval64 console_ua = 0;
+static uval console_ua = 0;
 
 struct laddr_range {
 	uval64 lr_base;
@@ -721,7 +721,7 @@ main(int argc, char **argv)
 	}
 
 	if (console_ua) {
-		printf("Registering console vterm: 0x%llx -> 0x%lx:0x%llx\n",
+		printf("Registering console vterm: 0x%lx -> 0x%lx:0x%llx\n",
 		       console_ua, lpid, vty0);
 		hargs.opcode = H_REGISTER_VTERM;
 		hargs.args[0] = console_ua;
