@@ -185,7 +185,7 @@ if(defined $kernel){
       $bintype = $words[1];
       next;
     }
-    if($words[0] eq "LOAD"){
+    if($words[0] eq "LOAD" && !defined $base){
       $base = $words[3];
       $base =~ /0x.{0,8}?([[:xdigit:]]{1,8})$/;
       $base = "0x" . $1;
