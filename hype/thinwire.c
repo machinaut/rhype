@@ -153,7 +153,8 @@ static sval __gdbstub wrap_thinwireReadAvail(struct io_chan *ops);
 
 static sval __gdbstub wrap_thinwireWriteAvail(struct io_chan *ops);
 
-static void tw_setops(struct io_chan *ops)
+static void
+tw_setops(struct io_chan *ops)
 {
 	if (! thinwire_activated)
 		activateThinWire();
