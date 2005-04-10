@@ -57,7 +57,7 @@ __xir_get_xh_data(uval class, uval dev_id)
 	return &xirr_classes[class].xc_data[dev_id];
 }
 
-static inline struct xh_data *
+static __attribute__ ((always_inline)) struct xh_data *
 xir_get_xh_data(xirr_t xirr)
 {
 	uval class = xirr_class(xirr);

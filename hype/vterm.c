@@ -427,7 +427,7 @@ vt_release_internal(struct vt *vt)
 	return 1;
 }
 
-static inline uval
+static uval
 vt_res_init(struct cpu_thread *thread, struct vt *vt)
 {
 	struct vios_resource *vres;
