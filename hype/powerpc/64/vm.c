@@ -33,6 +33,36 @@
 #include <vm.h>
 
 void
+do_tlbie(union pte *pte, uval ptex)
+{
+	uval64 vsid,
+	       group,
+	       pi,
+	       pi_high;
+	uval64 virtualAddress;
+
+	vsid = pte->bits.avpn >> 5;
+	group = ptex >> 3;
+	if (pte->bits.h) {
+		group = ~group;
+	}
+	pi = (vsid ^ group) & 0x7ff;
+	pi_high = (pte->bits.avpn & 0x1f) << 11;
+	pi |= pi_high;
+	virtualAddress = (pi << 12) | (vsid << 28);
+	if (pte->bits.l) {
+		virtualAddress |= (pte->bits.rpn & 1);
+		tlbie_large(virtualAddress);
+	} else {
+		tlbie(virtualAddress);
+	}
+
+	eieio();
+	tlbsync();
+	ptesync();
+}
+
+void
 pte_tlbie(union pte *pte, struct os *os)
 {
 	uval ptex = (pte - (union pte *)GET_HTAB(os)) >> LOG_PTE_SIZE;
