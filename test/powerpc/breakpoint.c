@@ -19,6 +19,7 @@
  */
 
 #include <config.h>
+#include <test.h>
 #include <lib.h>
 #include <sim.h>
 #include <asm.h>

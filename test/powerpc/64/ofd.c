@@ -40,7 +40,7 @@ extern void ofd_platform_config(struct partition_status* ps, void* ofd)
 static ofdn_t
 ofd_vdevice_vscsi_server(void *m, ofdn_t p, uval lpid, uval num)
 {
-	ofdn_t n;
+	ofdn_t n = 0;
 	static const char pathfmt[] = "/vdevice/v-scsi-host@%x";
 	static const char name[] = "v-scsi-host";
 	static const char compatible[] = "IBM,v-scsi-host";
@@ -111,7 +111,7 @@ ofd_vdevice_vscsi_server(void *m, ofdn_t p, uval lpid, uval num)
 static ofdn_t
 ofd_vdevice_vty_server(void *m, ofdn_t p, uval num)
 {
-	ofdn_t n;
+	ofdn_t n = 0;
 	static const char pathfmt[] = "/vdevice/vty-server@%x";
 	static const char name[] = "vty-server";
 	static const char compatible[] = "hvterm2";
@@ -585,7 +585,7 @@ ofd_chosen_props(void *m)
 static ofdn_t
 ofd_memory_props(void *m, uval mem_size)
 {
-	ofdn_t n;
+	ofdn_t n = 0;
 	char fmt[] = "/memory@%lx";
 	char name[] = "memory";
 	uval32 v;
