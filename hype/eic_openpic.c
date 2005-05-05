@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -81,13 +81,23 @@ union op_int_ack {
 
 static uval op_endian = 0;	/* 0 - BE, 1 - LE */
 
-static __inline__ uval32
-read_reg(uval32 __volatile__ * ptr)
+static inline uval32
+read_reg(const uval32 volatile * ptr)
 {
 	if (op_endian == 1) {
 		return io_in32LE(ptr);
 	} else {
 		return io_in32(ptr);
+	}
+}
+
+static inline void
+write_reg(uval32 volatile * ptr, uval32 val)
+{
+	if (op_endian == 1) {
+		io_out32LE(ptr, val);
+	} else {
+		io_out32(ptr, val);
 	}
 }
 
@@ -98,13 +108,28 @@ struct openpic_global {
 	opreg_t config;
 	const uval8 __pad2[0xc];
 
-	const uval8 __vendor_specific[0x70 - 0x30];
+	const uval8 __vendor_specific[0x80 - 0x30];
 
 	opreg_t vendor_id;
 	const uval8 __pad3[0xc];
 
 	opreg_t processor_init;
 	const uval8 __pad4[0xc];
+
+	opreg_t ipi0_privec;
+	const uval8 __pad5[0xc];
+
+	opreg_t ipi1_privec;
+	const uval8 __pad6[0xc];
+
+	opreg_t ipi2_privec;
+	const uval8 __pad7[0xc];
+
+	opreg_t ipi3_privec;
+	const uval8 __pad8[0xc];
+
+	opreg_t spurious;
+	const uval8 __pad9[0xc];
 };
 
 struct openpic_cpu {
@@ -237,13 +262,15 @@ __openpic_do_exception(struct cpu_thread *thread)
 
 	xirr_t xirr;
 	int h;
-	
+
 	op_vec.word = read_reg(&openpic->cpu_specific[0].intr_ack);
 	xirr = xirr_encode(op_vec.bits.vector, XIRR_CLASS_HWDEV);
 
 	++count;
-
 	h = xir_raise(xirr, &thread);
+
+	/*write_reg(&openpic->cpu_specific[0].eoi, 0);*/
+
 	if (h <= 0) {		/* Interrupt not raised */
 		return curr;
 	}
