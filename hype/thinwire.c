@@ -37,7 +37,7 @@
 #include <sim.h>
 
 /* Magic thinwire string that enables thinwire multi-plexing protocol */
-const char thinwire_magic_string[14] = "\000**thinwire**\000";
+const char thinwire_magic_string[14] = "***thinwire***";
 
 /*
  * Serial-line operations vector.
@@ -451,10 +451,15 @@ resetThinwire()
 #endif /* USE_THINWIRE_IO */
 }
 
+#define USE_SIMPLE_WRITE	1
+#define IMMEDIATE		0
+
 void
 configThinWire(struct io_chan *ic)
 {
+
 #ifdef USE_THINWIRE_IO
+	int immediate = IMMEDIATE;
 	int i = 0;
 	struct io_chan chan;
 
@@ -471,11 +476,16 @@ configThinWire(struct io_chan *ic)
 	 */
 	for (i = 0; i < MAX_CHANNELS; i++) {
 		ic = &channels[i];
+
+#ifdef USE_SIMPLE_WRITE
 		if ((i % CHANNELS_PER_OS) == CONSOLE_CHANNEL) {
 			ic->ic_write = thinwireSimpleWrite;
 		} else {
 			ic->ic_write = wrap_thinwireWrite;
 		}
+#else
+		ic->ic_write = wrap_thinwireWrite;
+#endif
 		ic->ic_write_avail = wrap_thinwireWriteAvail;
 		ic->ic_read = wrap_thinwireRead;
 		ic->ic_read_avail = wrap_thinwireReadAvail;
@@ -483,15 +493,16 @@ configThinWire(struct io_chan *ic)
 		fill_io_chan(ic);
 	}
 
+	if (immediate) {
+		activateThinWire();
+		return;
+	}
+
+
 	/* until thinwire_activated, pass-through reads to first partition */
 	ic = &channels[CHANNELS_PER_OS + CONSOLE_CHANNEL];
 	ic->ic_read = thinwireRead;
 	ic->ic_read_avail = thinwireReadAvail;
-
-
-#ifndef RELOADER
-	activateThinWire();
-#endif
 
 #else /* USE_THINWIRE_IO */
 	thinwire_ic = ic;
@@ -501,16 +512,15 @@ configThinWire(struct io_chan *ic)
 struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
 				   uval32 baudrate);
 
-
 #define __STR(x) #x
 #define STRINGIFY(x) __STR(x)
 static void __gdbstub
 activateThinWire(void)
 {
-	hprintf("activating thinwire\n");
+	hprintf("activating thinwire with speed " STRINGIFY(THINWIRE_BAUDRATE) "\n");
 
-	resetThinwire();
 	thinwire_activated = 1;
+	resetThinwire();
 
 #ifdef THINWIRE_BAUDRATE
 	char buf[32];
@@ -518,7 +528,7 @@ activateThinWire(void)
 	int i = 0;
 	const char *speed = STRINGIFY(THINWIRE_BAUDRATE);
 
-	if (speed == NULL) {
+	if (speed == NULL || onsim()) {
 		return;
 	}
 
@@ -533,6 +543,7 @@ activateThinWire(void)
 	}
 
 	thinwire_ic->ic_write(thinwire_ic, buf, i);
+
 	thinwire_ic->ic_read_all(thinwire_ic, buf, 5);
 
 	int len = parseThinWireReply(0, buf);
@@ -542,9 +553,10 @@ activateThinWire(void)
 		return;
 	}
 
-	thinwire_ic->ic_read_all(thinwire_ic, buf, len);
+	thinwire_ic->ic_read_all(thinwire_ic, buf+5, len);
+	len += 5;
 
-	if (memcmp(speed, buf, strlen(speed)) != 0) {
+	if (memcmp(speed, buf + 5, strlen(speed)) != 0) {
 		/* We were rejected */
 		return;
 	}
@@ -553,6 +565,8 @@ activateThinWire(void)
 	thinwire_ic = (*serial_init_fn)(0, 0, THINWIRE_BAUDRATE);
 
 	/* Wait for last message to be replayed at new speed */
-	thinwire_ic->ic_read_all(thinwire_ic, buf, len + 5);
+	thinwire_ic->ic_read_all(thinwire_ic, buf, i);
+
 #endif
+
 }
