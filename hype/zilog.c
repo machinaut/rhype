@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
@@ -89,21 +89,18 @@ zilog_write(struct io_chan *ops, const char *buf, uval length)
 {
 	struct zilog_chan *zc = (struct zilog_chan *)ops;
 	uval l = 0;
-
 #ifdef HW_FLOW_CONTROL
-	while (zilog_chkbit(ops, 0, CTS) == 0) ;
+	while (zilog_chkbit(ops, 1, CTS) == 0) ;
 #endif
-	zilog_setbit(ops, 5, RTS);
 	while (l < length) {
 		char c = *buf++;
 
-		while (zilog_chkbit(ops, 0, TX_BUF_EMP) == 0 ||
-		       zilog_chkbit(ops, 1, ALL_SNT) == 0) ;
+		while (zilog_write_avail(ops) == 0);
 
 		comOut(zc->comBase + DATA, c);
+
 		++l;
 	}
-	zilog_clrbit(ops, 5, RTS);
 
 	return length;
 }
@@ -226,7 +223,6 @@ zilog_init(uval io_addr, uval32 clock, uval32 baudrate)
 	};
 
 	(void)baudrate;
-
 #ifndef BOOT_ENVIRONMENT_of
 	// OF would have done the initialization for us already
 	unsigned int j;
@@ -257,5 +253,7 @@ zilog_init(uval io_addr, uval32 clock, uval32 baudrate)
 #else
 
 #endif
+
 	return fill_io_chan(&zilog_ic.base);
+
 }
