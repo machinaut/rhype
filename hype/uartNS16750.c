@@ -143,6 +143,21 @@ uartNS16750_init(uval io_addr, uval32 waitDSR, uval32 baudrate)
 {
 	struct uart *uart = &uartNS16750;
 
+
+	if (io_addr == 0 && waitDSR == 0) {
+		baudrate = 115200 / baudrate;
+		comOut(LCR, 0);
+		comOut(IER, 0xff);
+		comOut(IER, 0x0);
+		comOut(LCR, LCR_BD);
+		comOut(BD_LB, baudrate & 0xff);
+		comOut(BD_UB, baudrate >> 8);
+		comOut(LCR, LCR_8N1);
+		comOut(MCR, MCR_RTS|MCR_DTR);
+		comOut(FCR, FCR_FE);
+		return fill_io_chan(&uartNS16750.ops);
+	}
+
 	/* Serial port address is relative to comBase */
 	if (io_addr) {
 		uart->comBase = io_addr;
@@ -241,6 +256,9 @@ uartNS16750_write(struct io_chan *ops, const char *buf, uval len)
 		++l;
 
 	}
+	do {
+		comIn(LSR, lsr);
+	} while ((lsr & LSR_THRE) != LSR_THRE);
 	return l;
 }
 
