@@ -36,6 +36,12 @@
 
 #include <sim.h>
 
+/* USE_SIMPLE_WRITE == 1 --> use un-acked writes for console code */
+#define USE_SIMPLE_WRITE	1
+/* IMMEDIATE == 1 --> immediately activate thinwire */
+#define IMMEDIATE		0
+
+
 /* Magic thinwire string that enables thinwire multi-plexing protocol */
 const char thinwire_magic_string[14] = "***thinwire***";
 
@@ -121,7 +127,8 @@ static sval __gdbstub thinwireWriteAvail(struct io_chan *ops);
 static sval __gdbstub thinwireReadAvail(struct io_chan *ops);
 
 static sval __gdbstub
-thinwireSimpleWrite(struct io_chan *ops, const char *buf, uval length);
+thinwireSimpleWrite(struct io_chan *ops, const char *buf, uval length)
+	__attribute__((unused));
 
 static sval __gdbstub
 thinwireRead(struct io_chan *ops, char *buf, uval max_length);
@@ -159,11 +166,17 @@ tw_setops(struct io_chan *ops)
 	if (! thinwire_activated)
 		activateThinWire();
 
-	if (getChanNum(ops) % CHANNELS_PER_OS == 0) {
+#if USE_SIMPLE_WRITE == 1
+	uval i = getChanNum(ops);
+	if ((i % CHANNELS_PER_OS) == CONSOLE_CHANNEL) {
 		ops->ic_write = thinwireSimpleWrite;
 	} else {
 		ops->ic_write = thinwireWrite;
 	}
+#else
+	ops->ic_write = thinwireWrite;
+#endif
+
 	ops->ic_read = thinwireRead;
 	ops->ic_read_avail = thinwireReadAvail;
 	ops->ic_write_avail = thinwireWriteAvail;
@@ -451,14 +464,16 @@ resetThinwire()
 #endif /* USE_THINWIRE_IO */
 }
 
-#define USE_SIMPLE_WRITE	1
-#define IMMEDIATE		0
 
 void
 configThinWire(struct io_chan *ic)
 {
 
-#ifdef USE_THINWIRE_IO
+#ifndef USE_THINWIRE_IO
+	thinwire_ic = ic;
+	return;
+#endif
+
 	int immediate = IMMEDIATE;
 	int i = 0;
 	struct io_chan chan;
@@ -467,6 +482,31 @@ configThinWire(struct io_chan *ic)
 	memset(&chan, 0, sizeof (chan));
 
 	lock_init(&chan.lock);
+
+	if (immediate) {
+		activateThinWire();
+		for (i = 0; i < MAX_CHANNELS; i++) {
+			ic = &channels[i];
+
+#if USE_SIMPLE_WRITE == 1
+			if ((i % CHANNELS_PER_OS) == CONSOLE_CHANNEL) {
+				ic->ic_write = thinwireSimpleWrite;
+			} else {
+				ic->ic_write = thinwireWrite;
+			}
+#else
+			ic->ic_write = thinwireWrite;
+#endif
+			ic->ic_write_avail = thinwireWriteAvail;
+			ic->ic_read = thinwireRead;
+			ic->ic_read_avail = thinwireReadAvail;
+
+			fill_io_chan(ic);
+		}
+		return;
+	}
+
+
 
 	/* For all non-console channels, use wrapper functions for now.
 	 * These will activate thinwire and generate an hprintf so we
@@ -477,7 +517,7 @@ configThinWire(struct io_chan *ic)
 	for (i = 0; i < MAX_CHANNELS; i++) {
 		ic = &channels[i];
 
-#ifdef USE_SIMPLE_WRITE
+#if USE_SIMPLE_WRITE == 1
 		if ((i % CHANNELS_PER_OS) == CONSOLE_CHANNEL) {
 			ic->ic_write = thinwireSimpleWrite;
 		} else {
@@ -493,20 +533,12 @@ configThinWire(struct io_chan *ic)
 		fill_io_chan(ic);
 	}
 
-	if (immediate) {
-		activateThinWire();
-		return;
-	}
-
 
 	/* until thinwire_activated, pass-through reads to first partition */
 	ic = &channels[CHANNELS_PER_OS + CONSOLE_CHANNEL];
 	ic->ic_read = thinwireRead;
 	ic->ic_read_avail = thinwireReadAvail;
 
-#else /* USE_THINWIRE_IO */
-	thinwire_ic = ic;
-#endif
 }
 
 struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
@@ -564,8 +596,12 @@ activateThinWire(void)
 	/* Change speed */
 	thinwire_ic = (*serial_init_fn)(0, 0, THINWIRE_BAUDRATE);
 
+	uval x = 1<<20;
+	while (x--);
+
 	/* Wait for last message to be replayed at new speed */
 	thinwire_ic->ic_read_all(thinwire_ic, buf, i);
+
 
 #endif
 
