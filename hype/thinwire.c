@@ -549,8 +549,6 @@ struct io_chan *(*serial_init_fn) (uval io_addr, uval32 clock,
 static void __gdbstub
 activateThinWire(void)
 {
-	hprintf("activating thinwire with speed " STRINGIFY(THINWIRE_BAUDRATE) "\n");
-
 	thinwire_activated = 1;
 	resetThinwire();
 
