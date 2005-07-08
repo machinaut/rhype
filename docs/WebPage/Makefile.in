@@ -59,6 +59,6 @@ html: index.shtml
 #pdf:  $(TARGETS_PDF)
 #$(TARGETS): %: %.html %.ps %.pdf
 
-CLEAN_FILES += index.shtml HackersGuide.shtml rhype.html *.patch
+CLEAN_FILES += index.shtml HackersGuide.shtml Research_Hypervisor.shtml rhype.html *.patch
 
 ### watgsa:/projects/w/www-stage/hypervisor
