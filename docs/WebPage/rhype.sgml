@@ -55,11 +55,28 @@
     </para>
     <section>
       <title>
+	Fri Jul  8 09:01:19 EDT 2005
+      </title>
+      <para>
+	New CVS instructions, please see below.
+      </para>
+    </section>
+    <section>
+      <title>
+	Fri Jul  7 08:50:04 EDT 2005
+      </title>
+      <para>
+	New <emphasis>draft</emphasis> white paper describing the
+	principle functionality of the Research Hypervisor.
+      </para>
+    </section>
+    <section>
+      <title>
 	Tue Mar 8 14:21:30 EST 2005
       </title>
       <para>
 	Linux patch finally released. It is a single diff that
-	represets three distinct pieces of work.
+	represents three distinct pieces of work.
 	<orderedlist>
 	  <listitem>
 	    <para>
@@ -74,7 +91,7 @@
 	  </listitem>
 	  <listitem>
 	    <para>
-	      Teach the MAPLE PPC64 configureation to be hypervisor aware.
+	      Teach the MAPLE PPC64 configuration to be Hypervisor aware.
 	    </para>
 	  </listitem>
 	</orderedlist>
@@ -213,26 +230,65 @@
     </para>
     <section>
       <title>Using the CVS Repository</title>
+      <warning>
+	<para>
+	  We have switched to using ssh.  Please follow the
+	  instructions below.
+	</para>
+      </warning>
       <para>
-	Set CVSROOT in your environment to
-	<envar>
-	  :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
-	</envar>.
-	Alternately add
-	<command>
-	  -d :pserver:anonymous@kcvs.watson.ibm.com:/u/kitchawa/cvsroot
-	</command>
-	 in the CVS commands below (place it immediately
-	after <command>cvs</command>, before any other arguments).
+	Make sure you are setup to use ssh, <ulink
+	url="http://www.openssh.org/">http://www.openssh.org/</ulink>
+	is an excellent place to start.
       </para>
-      <para>
-	Issue the command <command>cvs login</command>.  You will be
-	prompted for a password; reply with the empty string.
-      </para>
-
-      <para>
-	Issue the command <command>cvs -z 6 co rhype</command>
-      </para>
+      <orderedlist>
+	<listitem>
+	  <para>
+	    Place the following public "private key" in a file.  The
+	    example below assumes it is in
+	    <filename>~/.ssh/kcvs</filename>:
+	    <programlisting>
+-----BEGIN DSA PRIVATE KEY-----
+MIIBuwIBAAKBgQC2mAehzPXSfpwSpvWLh4qAJZooBGL/2GXvQU66LgvvaoCCnB0A
+f+USAEpG03cXEWhXhLtLMLKQTzaidfepau2k5+Ix9yVLtkEVYTDfaa/rN1u8lYUO
+RBAnODc3ZwcjwPVY1/P0CJZVikpM1fHQ/Gd844J+znWkJT9+7JpsA5OMwQIVAJ5s
+L29MyukPBtU/lCH1rbpAd4wTAoGBALCyQIRspcKnFl0AcWtw8UBqqtazXsH33FO3
+PwVTg9E/sLYN1JhXHD09iMKnDF6O87AMnY9ryrK4ML6BYFRlo0LiFx459PiV6Azn
+f5Z4I1eRMR44nTx74ZoWnYRAhFIWooCQx2wE0zts4Rfwhmu2g9+1Dr7wlQCQmSto
+kDfxqSE6AoGAFEE5vSlYkEAlvB80tFS+Fu7QhAqrmw5fLQvvqLlrpPCiNrJWwi0e
+x0Tdo0P2s0hnODBbtpOsOSbqnBxKj3gKLzCX7Yz7VCWBRcR+p2C9HjNdi+eBW+3G
+fTfbjAJ9oXnlmRBeXGsq9hEiDUOw0E5rg8jhHT+afnCYkUscW/hJBCsCFFaxiti8
+LubgdNfucZUY0FGY7tLq
+-----END DSA PRIVATE KEY-----
+	    </programlisting>
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    Add the following lines to <filename>~/.ssh/config</filename>:
+	    <programlisting>
+Host kcvs
+  HostName kcvs.watson.ibm.com
+  User cvs
+  IdentityFile ~/.ssh/kcvs
+  Protocol 2
+  ForwardAgent no
+  ForwardX11 no
+  Compression yes
+	    </programlisting>
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    Now you can access the source by using the following command:
+	  </para>
+	  <para>
+	    <command>
+	      $ cvs -d cvs@kcvs:/u/kitchawa/cvsroot co rhype
+	    </command>
+	  </para>
+	</listitem>
+      </orderedlist>
       <para>
 	Once you've got the repository checked out, <command>cvs
 	update</command> will sync your local copy with the
@@ -290,6 +346,13 @@
 	  Can be build like all other documentation. A recent snap
 	  shot is <ulink url="HackersGuide.shtml">here
 	  (HackersGuide)</ulink> for your amusement.
+	</para>
+      </section>
+      <section>
+	<title>Research Hypervisor Principles</title>
+	<para>
+	  A recent snap shot is <ulink url="Research_Hypervisor.shtml">here
+	  (Research_Hypervisor)</ulink> for your amusement.
 	</para>
       </section>
       <section>
