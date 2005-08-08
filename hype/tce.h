@@ -45,8 +45,8 @@ union tce {
 		 *   10: System Address write only
 		 *   11: read/write
 		 */
-		uval64 tce_read		: 1;
 		uval64 tce_write	: 1;
+		uval64 tce_read		: 1;
 	} tce_bits;
 	/* *INDENT-ON* */
 };
