@@ -31,7 +31,7 @@ fi
 # $Id$
 # 
 #
-#set -x
+set -x
 #
 # Perhaps we were fed the right incantation for autoconf
 #
@@ -100,6 +100,7 @@ for c_in in $list; do
     configure.in|docs/configure.in)
       echo "autoconf $c_in > $c"
       $a_conf $c_in > $c
+      chmod +x $c
       ;;
     */configure.frag.in)
       echo "$a_conf $c_in | sed -ne '/#BEGIN_CONFIG/,/#END_CONFIG/p' > $c"
