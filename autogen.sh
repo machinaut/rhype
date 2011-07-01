@@ -31,7 +31,7 @@ fi
 # $Id$
 # 
 #
-set -x
+# set -x
 #
 # Perhaps we were fed the right incantation for autoconf
 #
