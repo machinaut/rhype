@@ -20,11 +20,11 @@
 
 #include <lib.h>
 unsigned long int
-strtoul(const char *nptr, char **endptr, int base)
+strtoul(const char *nptr, const char **endptr, int base)
 {
 	uval val = 0;
 	int c;
-	char const **ep = (char const **)endptr;
+	const char **ep = endptr;
 
 	ep++;
 

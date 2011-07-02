@@ -78,7 +78,7 @@ extern char *strstr(const char *str, const char *sub);
 extern int memcmp(const void *v1, const void *v2, size_t n);
 extern size_t strlen(const char *s);
 extern size_t strnlen(const char *s, size_t maxlen);
-extern unsigned long int strtoul(const char *nptr, char **endptr, int base);
+extern unsigned long int strtoul(const char *nptr, const char **endptr, int base);
 extern sval char2hex(char c);
 extern char hex2char(uval x);
 extern char str2hex(const char *str);
