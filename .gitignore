@@ -6,3 +6,7 @@ scripts/powerpc/64/configure.frag
 scripts/powerpc/configure.frag
 scripts/x86/configure.frag
 docs/configure
+confdefs.h
+config.cache
+config.log
+
